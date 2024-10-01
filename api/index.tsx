@@ -7,6 +7,7 @@ import { neynar } from 'frog/middlewares'
 export const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1080, height: 1080 },
+  imageAspectRatio: '1:1',
   title: 'Tic-Tac-Toe Game',
 }).use(
   neynar({
