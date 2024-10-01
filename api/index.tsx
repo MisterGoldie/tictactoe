@@ -13,12 +13,8 @@ export const app = new Frog({
       }
     }
   }
-}).use(
-  neynar({
-    apiKey: 'NEYNAR_FROG_FM',
-    features: ['interactor', 'cast'],
-  })
-);
+})
+
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
@@ -213,7 +209,5 @@ export const POST = handle(app)
 
 
 
-function neynar(arg0: { apiKey: string; features: string[]; }): any {
-  throw new Error('Function not implemented.');
-}
+
 //code that works without user picking the spots they want
