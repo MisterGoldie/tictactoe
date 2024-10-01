@@ -47,7 +47,27 @@ app.frame('/', async (c) => {
             'x-rapidapi-host': rapidApiHost,
           },
         })
-        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new TypeError("Oops, we haven't got JSON!");
+        }
+
+        const text = await response.text(); // Get the response as text
+        console.log("API Response:", text); // Log the response
+
+        let data;
+        try {
+          data = JSON.parse(text); // Try to parse the JSON
+        } catch (e) {
+          console.error("Failed to parse JSON:", e);
+          throw new Error("Invalid JSON response from API");
+        }
+
         const move = data.recommendation
 
         if (move !== undefined) {
@@ -65,9 +85,13 @@ app.frame('/', async (c) => {
         } else {
           message = "Game over! It's a draw. Start a new game!"
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error making API request:', error)
-        message = "Error making move. Try again!"
+        if (error instanceof Error) {
+          message = `Error making move: ${error.message}. Try again!`
+        } else {
+          message = "An unknown error occurred. Try again!"
+        }
       }
     }
   }
