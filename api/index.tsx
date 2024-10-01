@@ -1,20 +1,16 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
-import { neynar } from 'frog/middlewares';
-
-const AIRSTACK_API_KEY = process.env.AIRSTACK_API_KEY || '';
-const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY || '';
-const MOXIE_API_URL = "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest";
+import { neynar } from 'frog/middlewares'
 
 export const app = new Frog({
   basePath: '/api',
-  imageOptions: { width: 1200, height: 628 },
-  title: 'Tic-Tac-Toe Game',
+  imageOptions: { width: 1080, height: 1080 },
+  title: 'TicTacToe',
   hub: {
     apiUrl: "https://hubs.airstack.xyz",
     fetchOptions: {
       headers: {
-        "x-airstack-hubs": AIRSTACK_API_KEY, 
+        "x-airstack-hubs": "103ba30da492d4a7e89e7026a6d3a234e", // Your Airstack API key
       }
     }
   }
@@ -29,93 +25,64 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
-  isGameOver: boolean;
-  moveCount: number;
+  currentPlayer: 'X' | 'O';
 }
 
 app.frame('/', (c) => {
-  const { buttonValue } = c
+  const { buttonValue, status } = c
   let state: GameState
-  let message = "Click on a square to start the game!"
-  let debugInfo = "Debug Info:\n"
-
-  debugInfo += `Button Value: ${buttonValue}\n`
-
-  // Reconstruct state from compact representation
-  if (buttonValue && buttonValue !== 'newgame') {
-    const [moves, count] = buttonValue.split('|')
-    state = {
-      board: Array(9).fill(null),
-      isGameOver: false,
-      moveCount: parseInt(count) || 0
-    }
-    for (let i = 0; i < moves.length; i++) {
-      const index = parseInt(moves[i])
-      if (!isNaN(index) && index >= 0 && index < 9) {
-        state.board[index] = i % 2 === 0 ? 'X' : 'O'
-      }
-    }
-    debugInfo += `Reconstructed State: ${JSON.stringify(state)}\n`
+  
+  if (buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1])
   } else {
-    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
-    debugInfo += "New game started\n"
+    state = { board: Array(9).fill(null), currentPlayer: 'X' }
   }
+  
+  let { board, currentPlayer } = state
+  let message = "Make a move!"
 
-  if (buttonValue === 'newgame') {
-    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
-    message = "Click on a square to start the game!"
-    debugInfo += "New game started\n"
-  } else if (!state.isGameOver && buttonValue && buttonValue !== 'newgame') {
-    const playerMove = parseInt(buttonValue.split('|')[0])
-    if (!isNaN(playerMove) && state.board[playerMove] === null) {
-      state.board[playerMove] = 'X'
-      state.moveCount++
-      message = `You moved at ${COORDINATES[playerMove]}.`
-      debugInfo += `Player moved at ${COORDINATES[playerMove]}\n`
-      
-      if (checkWin(state.board)) {
-        message = `You win! Click 'New Game' to play again.`
-        state.isGameOver = true
-        debugInfo += "Player wins\n"
-      } else if (state.board.every((cell) => cell !== null)) {
-        message = "It's a draw! Click 'New Game' to play again."
-        state.isGameOver = true
-        debugInfo += "Game is a draw\n"
-      } else {
-        // Computer's move
-        const computerMove = getBestMove(state.board, 'O')
-        debugInfo += `Computer attempting move at ${COORDINATES[computerMove]}\n`
-        if (computerMove !== -1 && state.board[computerMove] === null) {
-          state.board[computerMove] = 'O'
-          state.moveCount++
-          message += ` Computer moved at ${COORDINATES[computerMove]}.`
-          debugInfo += `Computer successfully moved at ${COORDINATES[computerMove]}\n`
-          
-          if (checkWin(state.board)) {
-            message += ` Computer wins! Click 'New Game' to play again.`
-            state.isGameOver = true
-            debugInfo += "Computer wins\n"
-          } else if (state.board.every((cell) => cell !== null)) {
-            message += " It's a draw! Click 'New Game' to play again."
-            state.isGameOver = true
-            debugInfo += "Game is a draw\n"
-          } else {
-            message += " Your turn!"
-          }
+  if (status === 'response' && buttonValue) {
+    if (buttonValue === 'newgame') {
+      board = Array(9).fill(null)
+      currentPlayer = 'X'
+      message = "New game started! X's turn"
+    } else if (buttonValue.startsWith('move:')) {
+      // Player's move
+      const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+      if (availableMoves.length > 0) {
+        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)]
+        board[move] = currentPlayer
+        message = `Move made at ${COORDINATES[move]}.`
+        
+        if (checkWin(board)) {
+          message = `${currentPlayer} wins! Start a new game!`
+        } else if (board.every((cell: string | null) => cell !== null)) {
+          message = "Game over! It's a draw. Start a new game!"
         } else {
-          debugInfo += `Error: Invalid computer move ${computerMove}\n`
+          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+          
+          // Computer's move
+          const computerMove = getBestMove(board, currentPlayer)
+          if (computerMove !== -1) {
+            board[computerMove] = currentPlayer
+            message += ` Computer moved at ${COORDINATES[computerMove]}.`
+            
+            if (checkWin(board)) {
+              message += ` ${currentPlayer} wins! Start a new game!`
+            } else if (board.every((cell: string | null) => cell !== null)) {
+              message += " It's a draw. Start a new game!"
+            } else {
+              currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+              message += ` ${currentPlayer}'s turn.`
+            }
+          }
         }
       }
-    } else {
-      debugInfo += `Invalid player move: ${playerMove}\n`
     }
   }
 
-  debugInfo += `Final State: ${JSON.stringify(state)}\n`
-
-  // Create compact state representation
-  const compactState = state.board.reduce((acc, cell, index) => 
-    cell ? acc + index.toString() : acc, '') + '|' + state.moveCount
+  // Encode the state in the button values
+  const encodedState = encodeState({ board, currentPlayer })
 
   return c.res({
     image: (
@@ -124,22 +91,19 @@ app.frame('/', (c) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '1200px',
-        height: '628px',
+        width: '1080px',
+        height: '1080px',
         backgroundColor: 'white',
         color: 'black',
-        fontSize: '24px',
+        fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
-        {renderBoard(state.board)}
-        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'left', whiteSpace: 'pre-wrap', fontSize: '12px' }}>{debugInfo}</div>
+        {renderBoard(board)}
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
     intents: [
-      ...(!state.isGameOver ? state.board.map((cell, index) => 
-        cell === null ? <Button value={`${compactState}${index}`}>{COORDINATES[index]}</Button> : null
-      ).filter(Boolean) : []),
+      <Button value={`move:${encodedState}`}>Make Move</Button>,
       <Button value="newgame">New Game</Button>,
     ],
   })
@@ -237,5 +201,16 @@ function checkWin(board: (string | null)[]) {
   )
 }
 
+function encodeState(state: GameState): string {
+  return Buffer.from(JSON.stringify(state)).toString('base64')
+}
+
+function decodeState(encodedState: string): GameState {
+  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
+}
+
 export const GET = handle(app)
 export const POST = handle(app)
+
+
+//code that works without user picking the spots they want
