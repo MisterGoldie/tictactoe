@@ -15,135 +15,90 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
-  currentPlayer: 'X' | 'O';
+  currentPlayer: 'O' | 'X';
 }
 
 app.frame('/', (c) => {
-  try {
-    const { buttonValue, status } = c
-    let state: GameState
-    
-    console.log('Button Value:', buttonValue)
-    console.log('Status:', status)
+  const { buttonValue, status } = c
+  let state: GameState
+  
+  if (buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1])
+  } else {
+    state = { board: Array(9).fill(null), currentPlayer: 'O' }
+  }
+  
+  let { board, currentPlayer } = state
+  let message = "Make a move!"
 
-    if (buttonValue && buttonValue.startsWith('move:')) {
-      const encodedState = buttonValue.split(':')[1]
-      const moveIndex = buttonValue.split(':')[2]
-      console.log('Encoded State:', encodedState)
-      console.log('Move Index:', moveIndex)
-      state = decodeState(encodedState)
-    } else {
-      state = { board: Array(9).fill(null), currentPlayer: 'X' }
-    }
-    
-    console.log('Initial State:', state)
-
-    let { board, currentPlayer } = state
-    let message = "Your turn! Choose a spot."
-
-    if (status === 'response' && buttonValue) {
-      if (buttonValue === 'newgame') {
-        board = Array(9).fill(null)
-        currentPlayer = 'X'
-        message = "New game started! Your turn."
-      } else if (buttonValue.startsWith('move:')) {
-        const move = parseInt(buttonValue.split(':')[2])
-        console.log('Move:', move)
-        if (board[move] === null) {
-          // User's move
-          board[move] = 'X'
-          message = `You moved at ${COORDINATES[move]}.`
-          
-          if (checkWin(board)) {
-            message = "You win! Start a new game!"
-          } else if (board.every((cell: string | null) => cell !== null)) {
-            message = "Game over! It's a draw. Start a new game!"
-          } else {
-            // Computer's move
-            const computerMove = getBestMove(board, 'O')
-            console.log('Computer Move:', computerMove)
-            if (computerMove !== -1) {
-              board[computerMove] = 'O'
-              message += ` Computer moved at ${COORDINATES[computerMove]}.`
-              
-              if (checkWin(board)) {
-                message = "Computer wins! Start a new game!"
-              } else if (board.every((cell: string | null) => cell !== null)) {
-                message = "Game over! It's a draw. Start a new game!"
-              } else {
-                message += " Your turn!"
-              }
+  if (status === 'response' && buttonValue) {
+    if (buttonValue === 'newgame') {
+      board = Array(9).fill(null)
+      currentPlayer = 'O'
+      message = "New game started! Your turn (O)"
+    } else if (buttonValue.startsWith('move:')) {
+      const move = parseInt(buttonValue.split(':')[2])
+      if (board[move] === null) {
+        // Player's move
+        board[move] = 'O'
+        message = `You moved at ${COORDINATES[move]}.`
+        
+        if (checkWin(board)) {
+          message = `You win! Start a new game!`
+        } else if (board.every((cell: string | null) => cell !== null)) {
+          message = "Game over! It's a draw. Start a new game!"
+        } else {
+          // Computer's move
+          const computerMove = getBestMove(board, 'X')
+          if (computerMove !== -1) {
+            board[computerMove] = 'X'
+            message += ` Computer moved at ${COORDINATES[computerMove]}.`
+            
+            if (checkWin(board)) {
+              message += ` Computer wins! Start a new game!`
+            } else if (board.every((cell: string | null) => cell !== null)) {
+              message += " It's a draw. Start a new game!"
+            } else {
+              message += " Your turn (O)."
             }
           }
-        } else {
-          message = "That spot is already taken! Choose another."
         }
+      } else {
+        message = "That spot is already taken! Choose another."
       }
     }
-
-    console.log('Final State:', { board, currentPlayer })
-    console.log('Message:', message)
-
-    // Encode the state in the button values
-    const encodedState = encodeState({ board, currentPlayer })
-
-    return c.res({
-      image: (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '1080px',
-          height: '1080px',
-          backgroundColor: 'white',
-          color: 'black',
-          fontSize: '36px',
-          fontFamily: 'Arial, sans-serif',
-        }}>
-          {renderBoard(board)}
-          <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        </div>
-      ),
-      intents: [
-        ...board.map((cell, index) => 
-          cell === null ? (
-            [
-              <Button value={`move:${encodedState}:${index}`}>
-                {COORDINATES[index]}
-              </Button>
-            ]
-          ) : (
-            [<div>{COORDINATES[index]}</div>]
-          )
-        ).flat(),
-        <Button value="newgame">New Game</Button>,
-      ],
-    })
-  } catch (error) {
-    console.error('Error in app.frame:', error)
-    return c.res({
-      image: (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '1080px',
-          height: '1080px',
-          backgroundColor: 'white',
-          color: 'black',
-          fontSize: '36px',
-          fontFamily: 'Arial, sans-serif',
-        }}>
-          <div>An error occurred. Please try again.</div>
-        </div>
-      ),
-      intents: [
-        <Button value="newgame">New Game</Button>,
-      ],
-    })
   }
+
+  // Encode the state in the button values
+  const encodedState = encodeState({ board, currentPlayer })
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {renderBoard(board)}
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+      </div>
+    ),
+    intents: [
+      ...board.map((cell, index) => 
+        <Button value={`move:${encodedState}:${index}`}>
+          {cell === null ? COORDINATES[index] : '-'}
+        </Button>
+      ),
+      <Button value="newgame">New Game</Button>,
+    ],
+  })
 })
 
 function getBestMove(board: (string | null)[], player: string): number {
