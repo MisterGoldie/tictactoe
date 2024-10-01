@@ -5,8 +5,7 @@ import { neynar } from 'frog/middlewares';
 export const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1080, height: 1080 },
-  imageAspectRatio: "1:1",
-  title: '$Moxie Stats Tracker',
+  title: 'TicTacToe',
   hub: {
     apiUrl: "https://hubs.airstack.xyz",
     fetchOptions: {
