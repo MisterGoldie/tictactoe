@@ -1,5 +1,9 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
+import { init, fetchQuery } from '@airstack/node'
+
+// Initialize Airstack client
+init(process.env.AIRSTACK_API_KEY as string)
 
 export const app = new Frog({
   basePath: '/api',
@@ -17,6 +21,8 @@ type GameState = {
   board: (string | null)[];
   currentPlayer: 'O' | 'X';
   isGameOver: boolean;
+  userFid?: string;
+  userProfileName?: string;
 }
 
 // Fisher-Yates shuffle algorithm
@@ -28,25 +34,53 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-app.frame('/', (c) => {
+async function getUserInfo(fid: string) {
+  const query = `
+    query GetUsersFidAndProfileName {
+      Socials(input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: "${fid}"}}, blockchain: ethereum, limit: 1}) {
+        Social {
+          userId
+          profileName
+          dappName
+        }
+      }
+    }
+  `
+  const { data, error } = await fetchQuery(query)
+  if (error) {
+    console.error('Error fetching user info:', error)
+    return null
+  }
+  return data?.Socials?.Social[0]
+}
+
+app.frame('/', async (c) => {
   const { buttonValue, status } = c
+  const fid = c.frameData?.fid
   let state: GameState
-  
+
   if (buttonValue && buttonValue.startsWith('move:')) {
     state = decodeState(buttonValue.split(':')[1])
   } else {
     state = { board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false }
+    if (fid !== undefined) {
+      const userInfo = await getUserInfo(fid.toString())
+      if (userInfo) {
+        state.userFid = userInfo.userId
+        state.userProfileName = userInfo.profileName
+      }
+    }
   }
-  
-  let { board, currentPlayer, isGameOver } = state
-  let message = "Make a move!"
+
+  let { board, currentPlayer, isGameOver, userFid, userProfileName } = state
+  let message = userProfileName ? `${userProfileName}, make a move!` : "Make a move!"
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'O'
       isGameOver = false
-      message = "New game started! Your turn (O)"
+      message = userProfileName ? `${userProfileName}, new game started! Your turn (O)` : "New game started! Your turn (O)"
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
       if (board[move] === null && !isGameOver) {
@@ -87,7 +121,7 @@ app.frame('/', (c) => {
   }
 
   // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer, isGameOver })
+  const encodedState = encodeState({ board, currentPlayer, isGameOver, userFid, userProfileName })
 
   // Get available moves
   const availableMoves = board.reduce((acc, cell, index) => {
@@ -122,6 +156,7 @@ app.frame('/', (c) => {
       }}>
         {renderBoard(board)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        {userFid && <div style={{ marginTop: '20px', fontSize: '24px' }}>Player FID: {userFid}</div>}
       </div>
     ),
     intents: intents,
