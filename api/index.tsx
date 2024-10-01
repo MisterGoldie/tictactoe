@@ -1,5 +1,3 @@
-/** @jsxImportSource frog/jsx */
-
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
@@ -7,15 +5,24 @@ import { NeynarVariables } from 'frog/middlewares'
 
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql';
 const AIRSTACK_API_KEY = process.env.AIRSTACK_API_KEY as string;
+const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY as string;
 
 export const app = new Frog<{ Variables: NeynarVariables }>({
   basePath: '/api',
   imageOptions: { width: 1080, height: 1080 },
   imageAspectRatio: '1:1',
   title: 'Tic-Tac-Toe Game',
+  hub: {
+    apiUrl: "https://hubs.airstack.xyz",
+    fetchOptions: {
+      headers: {
+        "x-airstack-hubs": AIRSTACK_API_KEY, // Using the environment variable
+      }
+    }
+  }
 }).use(
   neynar({
-    apiKey: process.env.NEYNAR_API_KEY as string,
+    apiKey: NEYNAR_API_KEY, // Using the environment variable
     features: ['interactor', 'cast'],
   })
 );
