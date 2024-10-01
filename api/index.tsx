@@ -15,6 +15,7 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
+  isGameOver: boolean;
 }
 
 app.frame('/', (c) => {
@@ -23,7 +24,7 @@ app.frame('/', (c) => {
   let message = "Click 'New Game' to start!"
 
   if (buttonValue === 'newgame' || !c.previousState) {
-    state = { board: Array(9).fill(null) }
+    state = { board: Array(9).fill(null), isGameOver: false }
     const computerMove = getBestMove(state.board, 'X')
     state.board[computerMove] = 'X'
     message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
@@ -31,9 +32,9 @@ app.frame('/', (c) => {
     state = JSON.parse(c.previousState as string) as GameState
   }
 
-  let { board } = state
+  let { board, isGameOver } = state
 
-  if (status === 'response' && buttonValue && buttonValue !== 'newgame') {
+  if (status === 'response' && buttonValue && buttonValue !== 'newgame' && !isGameOver) {
     const move = parseInt(buttonValue)
     if (!isNaN(move) && board[move] === null) {
       board[move] = 'O'
@@ -41,8 +42,10 @@ app.frame('/', (c) => {
       
       if (checkWin(board)) {
         message = `You win! Click 'New Game' to play again.`
+        isGameOver = true
       } else if (board.every((cell: string | null) => cell !== null)) {
         message = "It's a draw! Click 'New Game' to play again."
+        isGameOver = true
       } else {
         const computerMove = getBestMove(board, 'X')
         board[computerMove] = 'X'
@@ -50,8 +53,10 @@ app.frame('/', (c) => {
         
         if (checkWin(board)) {
           message += ` Computer wins! Click 'New Game' to play again.`
+          isGameOver = true
         } else if (board.every((cell: string | null) => cell !== null)) {
           message += " It's a draw! Click 'New Game' to play again."
+          isGameOver = true
         } else {
           message += " Your turn!"
         }
@@ -78,9 +83,9 @@ app.frame('/', (c) => {
       </div>
     ),
     intents: [
-      ...board.map((cell, index) => 
+      ...(!isGameOver ? board.map((cell, index) => 
         cell === null ? <Button value={index.toString()}>{COORDINATES[index]}</Button> : null
-      ).filter(Boolean),
+      ).filter(Boolean) : []),
       <Button value="newgame">New Game</Button>,
     ],
   })
