@@ -1,19 +1,19 @@
+/** @jsxImportSource frog/jsx */
+
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
-import { init, fetchQuery } from '@airstack/node'
-
-// Initialize Airstack client
-init(process.env.AIRSTACK_API_KEY as string)
+import { neynar } from 'frog/middlewares'
 
 export const app = new Frog({
   basePath: '/api',
-  title: 'Tic-Tac-Toe Frame',
-  imageOptions: {
-    width: 1080,
-    height: 1080,
-  },
-  imageAspectRatio: '1:1',
-})
+  imageOptions: { width: 1200, height: 628 },
+  title: 'Tic-Tac-Toe Game',
+}).use(
+  neynar({
+    apiKey: process.env.NEYNAR_API_KEY as string,
+    features: ['interactor', 'cast'],
+  })
+);
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
@@ -21,11 +21,8 @@ type GameState = {
   board: (string | null)[];
   currentPlayer: 'O' | 'X';
   isGameOver: boolean;
-  userFid?: string;
-  userProfileName?: string;
 }
 
-// Fisher-Yates shuffle algorithm
 function shuffleArray<T>(array: T[]): T[] {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -34,27 +31,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-async function getUserInfo(fid: string) {
-  const query = `
-    query GetUsersFidAndProfileName {
-      Socials(input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: "${fid}"}}, blockchain: ethereum, limit: 1}) {
-        Social {
-          userId
-          profileName
-          dappName
-        }
-      }
-    }
-  `
-  const { data, error } = await fetchQuery(query)
-  if (error) {
-    console.error('Error fetching user info:', error)
-    return null
-  }
-  return data?.Socials?.Social[0]
-}
-
-app.frame('/', async (c) => {
+app.frame('/', (c) => {
   const { buttonValue, status } = c
   const fid = c.frameData?.fid
   let state: GameState
@@ -63,33 +40,26 @@ app.frame('/', async (c) => {
     state = decodeState(buttonValue.split(':')[1])
   } else {
     state = { board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false }
-    if (fid !== undefined) {
-      const userInfo = await getUserInfo(fid.toString())
-      if (userInfo) {
-        state.userFid = userInfo.userId
-        state.userProfileName = userInfo.profileName
-      }
-    }
   }
 
-  let { board, currentPlayer, isGameOver, userFid, userProfileName } = state
-  let message = userProfileName ? `Your turn (@${userProfileName})` : "Your turn (O)"
+  let { board, currentPlayer, isGameOver } = state
+  let message = fid ? `Your turn (FID: ${fid})` : "Your turn (O)"
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'O'
       isGameOver = false
-      message = userProfileName ? `New game started! Your turn (@${userProfileName})` : "New game started! Your turn (O)"
+      message = fid ? `New game started! Your turn (FID: ${fid})` : "New game started! Your turn (O)"
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
       if (board[move] === null && !isGameOver) {
         // Player's move
         board[move] = 'O'
-        message = userProfileName ? `You moved at ${COORDINATES[move]}, @${userProfileName}.` : `You moved at ${COORDINATES[move]}.`
+        message = fid ? `You moved at ${COORDINATES[move]}, FID: ${fid}.` : `You moved at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = userProfileName ? `You win, @${userProfileName}! Game over.` : `You win! Game over.`
+          message = fid ? `You win, FID: ${fid}! Game over.` : `You win! Game over.`
           isGameOver = true
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw."
@@ -108,7 +78,7 @@ app.frame('/', async (c) => {
               message += " It's a draw. Game over."
               isGameOver = true
             } else {
-              message += userProfileName ? ` Your turn (@${userProfileName}).` : " Your turn (O)."
+              message += fid ? ` Your turn (FID: ${fid}).` : " Your turn (O)."
             }
           }
         }
@@ -121,7 +91,7 @@ app.frame('/', async (c) => {
   }
 
   // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer, isGameOver, userFid, userProfileName })
+  const encodedState = encodeState({ board, currentPlayer, isGameOver })
 
   // Get available moves
   const availableMoves = board.reduce((acc, cell, index) => {
@@ -147,8 +117,8 @@ app.frame('/', async (c) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '1080px',
-        height: '1080px',
+        width: '1200px',
+        height: '628px',
         backgroundColor: 'white',
         color: 'black',
         fontSize: '36px',
@@ -156,7 +126,7 @@ app.frame('/', async (c) => {
       }}>
         {renderBoard(board)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        {userFid && <div style={{ marginTop: '20px', fontSize: '24px' }}>Player FID: {userFid}</div>}
+        {fid && <div style={{ marginTop: '20px', fontSize: '24px' }}>Player FID: {fid}</div>}
       </div>
     ),
     intents: intents,
