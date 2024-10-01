@@ -7,7 +7,20 @@ export const app = new Frog({
   imageOptions: { width: 1080, height: 1080 },
   imageAspectRatio: '1:1',
   title: 'TicTacToe',
-})
+  hub: {
+    apiUrl: "https://hubs.airstack.xyz",
+    fetchOptions: {
+      headers: {
+        "x-airstack-hubs": "AIRSTACK_API_KEY", // Your Airstack API key
+      }
+    }
+  }
+}).use(
+  neynar({
+    apiKey: 'NEYNAR_FROG_FM',
+    features: ['interactor', 'cast'],
+  })
+);
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
@@ -233,10 +246,5 @@ function checkWin(board: (string | null)[]) {
   )
 }
 
-
-
 export const GET = handle(app)
 export const POST = handle(app)
-
-
-//code that works without user picking the spots they want
