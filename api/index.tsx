@@ -40,7 +40,10 @@ app.frame('/', async (c) => {
       const player = currentPlayer.toLowerCase()
 
       try {
-        const response = await fetch(`https://${rapidApiHost}/${boardState}/${player}`, {
+        const apiUrl = `https://${rapidApiHost}/${boardState}/${player}`
+        console.log('Attempting API call to:', apiUrl) // Log the full URL
+
+        const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'x-rapidapi-key': rapidApiKey || '',
@@ -57,12 +60,12 @@ app.frame('/', async (c) => {
           throw new TypeError("Oops, we haven't got JSON!");
         }
 
-        const text = await response.text(); // Get the response as text
-        console.log("API Response:", text); // Log the response
+        const text = await response.text();
+        console.log("API Response:", text);
 
         let data;
         try {
-          data = JSON.parse(text); // Try to parse the JSON
+          data = JSON.parse(text);
         } catch (e) {
           console.error("Failed to parse JSON:", e);
           throw new Error("Invalid JSON response from API");
@@ -88,9 +91,17 @@ app.frame('/', async (c) => {
       } catch (error: unknown) {
         console.error('Error making API request:', error)
         if (error instanceof Error) {
-          message = `Error making move: ${error.message}. Try again!`
+          message = `Error: ${error.message}. Try again or start a new game.`
         } else {
-          message = "An unknown error occurred. Try again!"
+          message = "An unknown error occurred. Try again or start a new game."
+        }
+        // Fallback: Make a random move
+        const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+        if (availableMoves.length > 0) {
+          const randomMove = availableMoves[Math.floor(Math.random() * availableMoves.length)]
+          board[randomMove] = currentPlayer
+          message += ` Random move made at ${COORDINATES[randomMove]}.`
+          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
         }
       }
     }
