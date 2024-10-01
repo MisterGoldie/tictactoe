@@ -19,6 +19,15 @@ type GameState = {
   isGameOver: boolean;
 }
 
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
 app.frame('/', (c) => {
   const { buttonValue, status } = c
   let state: GameState
@@ -86,9 +95,12 @@ app.frame('/', (c) => {
     return acc
   }, [] as number[])
 
+  // Shuffle available moves and take the first 4 (or less if fewer are available)
+  const shuffledMoves = shuffleArray([...availableMoves]).slice(0, 4)
+
   const intents = isGameOver
     ? [<Button value="newgame">New Game</Button>]
-    : availableMoves.slice(0, 4).map((index) => 
+    : shuffledMoves.map((index) => 
         <Button value={`move:${encodedState}:${index}`}>
           {COORDINATES[index]}
         </Button>
