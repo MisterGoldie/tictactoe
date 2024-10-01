@@ -11,7 +11,7 @@ export const app = new Frog({
     apiUrl: "https://hubs.airstack.xyz",
     fetchOptions: {
       headers: {
-        "x-airstack-hubs": "AIRSTACK_API_KEY", 
+        "x-airstack-hubs": "AIRSTACK_API_KEY", // Your Airstack API key
       }
     }
   }
