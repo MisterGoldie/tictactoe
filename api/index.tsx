@@ -17,31 +17,37 @@ type GameState = {
   currentPlayer: 'X' | 'O';
 }
 
-app.frame('/', (c) => {
+app.frame('/', async (c) => {
   const { buttonValue, status } = c
-  const previousState = c.previousState as GameState | undefined
-  let board = previousState?.board || Array(9).fill(null)
-  let currentPlayer = previousState?.currentPlayer || 'X'
-  let message = "New game started! X's turn"
+  let state: GameState
+  
+  if (buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1])
+  } else {
+    state = { board: Array(9).fill(null), currentPlayer: 'X' }
+  }
+  
+  let { board, currentPlayer } = state
+  let message = "Make a move!"
 
-  if (status === 'response' && buttonValue === 'newgame') {
-    board = Array(9).fill(null)
-    currentPlayer = 'X'
-    message = "New game started! X's turn"
-    return renderFrame(c, board, currentPlayer, message)
-  } else if (status === 'response' && buttonValue === 'move') {
-    const boardState = board.map((cell: string | null) => cell || '-').join('')
-    const player = currentPlayer.toLowerCase()
+  if (status === 'response' && buttonValue) {
+    if (buttonValue === 'newgame') {
+      board = Array(9).fill(null)
+      currentPlayer = 'X'
+      message = "New game started! X's turn"
+    } else if (buttonValue.startsWith('move:')) {
+      const boardState = board.map((cell: string | null) => cell || '-').join('')
+      const player = currentPlayer.toLowerCase()
 
-    fetch(`https://${rapidApiHost}/${boardState}/${player}`, {
-      method: 'GET',
-      headers: {
-        'x-rapidapi-key': rapidApiKey || '',
-        'x-rapidapi-host': rapidApiHost,
-      },
-    })
-      .then(response => response.json())
-      .then(data => {
+      try {
+        const response = await fetch(`https://${rapidApiHost}/${boardState}/${player}`, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-key': rapidApiKey || '',
+            'x-rapidapi-host': rapidApiHost,
+          },
+        })
+        const data = await response.json()
         const move = data.recommendation
 
         if (move !== undefined) {
@@ -59,22 +65,16 @@ app.frame('/', (c) => {
         } else {
           message = "Game over! It's a draw. Start a new game!"
         }
-
-        renderFrame(c, board, currentPlayer, message)
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Error making API request:', error)
         message = "Error making move. Try again!"
-        renderFrame(c, board, currentPlayer, message)
-      })
-
-    return // Return here to prevent immediate frame rendering
+      }
+    }
   }
 
-  return renderFrame(c, board, currentPlayer, message)
-})
+  // Encode the state in the button values
+  const encodedState = encodeState({ board, currentPlayer })
 
-function renderFrame(c: any, board: (string | null)[], currentPlayer: 'X' | 'O', message: string) {
   return c.res({
     image: (
       <div style={{
@@ -94,12 +94,11 @@ function renderFrame(c: any, board: (string | null)[], currentPlayer: 'X' | 'O',
       </div>
     ),
     intents: [
-      <Button value="move">Make Move</Button>,
+      <Button value={`move:${encodedState}`}>Make Move</Button>,
       <Button value="newgame">New Game</Button>,
     ],
-    state: { board, currentPlayer }
   })
-}
+})
 
 function renderBoard(board: (string | null)[]) {
   return (
@@ -144,6 +143,14 @@ function checkWin(board: (string | null)[]) {
     board[pattern[0]] === board[pattern[1]] &&
     board[pattern[0]] === board[pattern[2]]
   )
+}
+
+function encodeState(state: GameState): string {
+  return Buffer.from(JSON.stringify(state)).toString('base64')
+}
+
+function decodeState(encodedState: string): GameState {
+  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
 }
 
 export const GET = handle(app)
