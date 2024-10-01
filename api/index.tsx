@@ -16,6 +16,7 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 type GameState = {
   board: (string | null)[];
   currentPlayer: 'O' | 'X';
+  isGameOver: boolean;
 }
 
 app.frame('/', (c) => {
@@ -25,28 +26,31 @@ app.frame('/', (c) => {
   if (buttonValue && buttonValue.startsWith('move:')) {
     state = decodeState(buttonValue.split(':')[1])
   } else {
-    state = { board: Array(9).fill(null), currentPlayer: 'O' }
+    state = { board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false }
   }
   
-  let { board, currentPlayer } = state
+  let { board, currentPlayer, isGameOver } = state
   let message = "Make a move!"
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'O'
+      isGameOver = false
       message = "New game started! Your turn (O)"
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
-      if (board[move] === null) {
+      if (board[move] === null && !isGameOver) {
         // Player's move
         board[move] = 'O'
         message = `You moved at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = `You win! Start a new game!`
+          message = `You win! Game over.`
+          isGameOver = true
         } else if (board.every((cell: string | null) => cell !== null)) {
-          message = "Game over! It's a draw. Start a new game!"
+          message = "Game over! It's a draw."
+          isGameOver = true
         } else {
           // Computer's move
           const computerMove = getBestMove(board, 'X')
@@ -55,14 +59,18 @@ app.frame('/', (c) => {
             message += ` Computer moved at ${COORDINATES[computerMove]}.`
             
             if (checkWin(board)) {
-              message += ` Computer wins! Start a new game!`
+              message += ` Computer wins! Game over.`
+              isGameOver = true
             } else if (board.every((cell: string | null) => cell !== null)) {
-              message += " It's a draw. Start a new game!"
+              message += " It's a draw. Game over."
+              isGameOver = true
             } else {
               message += " Your turn (O)."
             }
           }
         }
+      } else if (isGameOver) {
+        message = "Game is over. Start a new game!"
       } else {
         message = "That spot is already taken! Choose another."
       }
@@ -70,7 +78,7 @@ app.frame('/', (c) => {
   }
 
   // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer })
+  const encodedState = encodeState({ board, currentPlayer, isGameOver })
 
   // Get available moves
   const availableMoves = board.reduce((acc, cell, index) => {
@@ -78,14 +86,13 @@ app.frame('/', (c) => {
     return acc
   }, [] as number[])
 
-  const intents = [
-    ...availableMoves.slice(0, 3).map((index) => 
-      <Button value={`move:${encodedState}:${index}`}>
-        {COORDINATES[index]}
-      </Button>
-    ),
-    <Button value="newgame">New Game</Button>,
-  ]
+  const intents = isGameOver
+    ? [<Button value="newgame">New Game</Button>]
+    : availableMoves.slice(0, 4).map((index) => 
+        <Button value={`move:${encodedState}:${index}`}>
+          {COORDINATES[index]}
+        </Button>
+      )
 
   return c.res({
     image: (
