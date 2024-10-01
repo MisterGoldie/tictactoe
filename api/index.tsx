@@ -17,69 +17,61 @@ type GameState = {
   board: (string | null)[];
   isGameOver: boolean;
   moveCount: number;
-  lastButtonValue: string | null;
 }
 
 app.frame('/', (c) => {
-  const { buttonValue, status } = c
+  const { buttonValue } = c
   let state: GameState
   let message = "Click 'New Game' to start!"
-  let debugInfo = "Debug Info:\n"
 
-  debugInfo += `Button Value: ${buttonValue}\n`
-  debugInfo += `Status: ${status}\n`
-
-  // Parse the previous state from the button value
+  // Reconstruct state from compact representation
   if (buttonValue && buttonValue !== 'newgame') {
-    const parts = buttonValue.split('|')
-    const prevStateStr = parts[1]  // We only need the second part
-    if (prevStateStr) {
-      state = JSON.parse(prevStateStr)
-      debugInfo += `Parsed State: ${JSON.stringify(state)}\n`
-    } else {
-      state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0, lastButtonValue: null }
+    const [moves, count] = buttonValue.split('|')
+    state = {
+      board: Array(9).fill(null),
+      isGameOver: false,
+      moveCount: parseInt(count) || 0
+    }
+    for (let i = 0; i < moves.length; i++) {
+      const index = parseInt(moves[i])
+      if (!isNaN(index) && index >= 0 && index < 9) {
+        state.board[index] = i % 2 === 0 ? 'X' : 'O'
+      }
     }
   } else {
-    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0, lastButtonValue: null }
+    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
   }
 
   if (buttonValue === 'newgame' || state.moveCount === 0) {
-    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 1, lastButtonValue: null }
-    const computerMove = getBestMove(state.board, 'X')
+    const computerMove = 4 // Always start in the center for simplicity
     state.board[computerMove] = 'X'
+    state.moveCount = 1
     message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
-    debugInfo += `New game started, Computer moved at ${COORDINATES[computerMove]}\n`
-  } else if (buttonValue && buttonValue !== 'newgame' && buttonValue !== state.lastButtonValue && !state.isGameOver) {
-    const move = parseInt(buttonValue.split('|')[0])
-    if (!isNaN(move) && state.board[move] === null) {
-      state.board[move] = 'O'
+  } else if (!state.isGameOver && buttonValue) {
+    const playerMove = parseInt(buttonValue.split('|')[0])
+    if (!isNaN(playerMove) && state.board[playerMove] === null) {
+      state.board[playerMove] = 'O'
       state.moveCount++
-      message = `You moved at ${COORDINATES[move]}.`
-      debugInfo += `Player moved at ${COORDINATES[move]}\n`
+      message = `You moved at ${COORDINATES[playerMove]}.`
       
       if (checkWin(state.board)) {
         message = `You win! Click 'New Game' to play again.`
         state.isGameOver = true
-        debugInfo += "Player wins\n"
       } else if (state.board.every((cell) => cell !== null)) {
         message = "It's a draw! Click 'New Game' to play again."
         state.isGameOver = true
-        debugInfo += "Game is a draw\n"
       } else {
         const computerMove = getBestMove(state.board, 'X')
         state.board[computerMove] = 'X'
         state.moveCount++
         message += ` Computer moved at ${COORDINATES[computerMove]}.`
-        debugInfo += `Computer moved at ${COORDINATES[computerMove]}\n`
         
         if (checkWin(state.board)) {
           message += ` Computer wins! Click 'New Game' to play again.`
           state.isGameOver = true
-          debugInfo += "Computer wins\n"
         } else if (state.board.every((cell) => cell !== null)) {
           message += " It's a draw! Click 'New Game' to play again."
           state.isGameOver = true
-          debugInfo += "Game is a draw\n"
         } else {
           message += " Your turn!"
         }
@@ -87,10 +79,9 @@ app.frame('/', (c) => {
     }
   }
 
-  state.lastButtonValue = buttonValue || null
-
-  debugInfo += `Current State: ${JSON.stringify(state)}\n`
-  debugInfo += `Move Count: ${state.moveCount}\n`
+  // Create compact state representation
+  const compactState = state.board.reduce((acc, cell, index) => 
+    cell ? acc + index.toString() : acc, '') + '|' + state.moveCount
 
   return c.res({
     image: (
@@ -108,12 +99,11 @@ app.frame('/', (c) => {
       }}>
         {renderBoard(state.board)}
         <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'left', whiteSpace: 'pre-wrap' }}>{debugInfo}</div>
       </div>
     ),
     intents: [
       ...(!state.isGameOver ? state.board.map((cell, index) => 
-        cell === null ? <Button value={`${index}|${JSON.stringify(state)}`}>{COORDINATES[index]}</Button> : null
+        cell === null ? <Button value={`${compactState}${index}`}>{COORDINATES[index]}</Button> : null
       ).filter(Boolean) : []),
       <Button value="newgame">New Game</Button>,
     ],
