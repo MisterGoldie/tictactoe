@@ -1,25 +1,73 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
+import { init } from '@airstack/node'
+import { neynar } from 'frog/middlewares'
+
+// Initialize Airstack client
+init(process.env.AIRSTACK_API_KEY || '')
 
 export const app = new Frog({
   basePath: '/api',
-  title: 'Tic-Tac-Toe Frame',
-  imageOptions: {
-    width: 1080,
-    height: 1080,
-  },
-  imageAspectRatio: '1:1',
-})
+  imageOptions: { width: 1080, height: 1080 },
+  title: 'TicTacToe',
+  hub: {
+    apiUrl: "https://hubs.airstack.xyz",
+    fetchOptions: {
+      headers: {
+        "x-airstack-hubs": process.env.AIRSTACK_API_KEY || '',
+      } as HeadersInit
+    }
+  }
+}).use(
+  neynar({
+    apiKey: process.env.NEYNAR_API_KEY || '',
+    features: ['interactor', 'cast'],
+  })
+)
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
   currentPlayer: 'X' | 'O';
+  userProfile?: {
+    dappName: string;
+    userId: string;
+    profileName: string;
+    profileImage: string;
+  };
 }
 
-app.frame('/', (c) => {
-  const { buttonValue, status } = c
+async function getUserProfileDetails(userId: string) {
+  const query = `
+    query GetUserProfileDetails {
+      Socials(input: {filter: {userId: {_eq: "${userId}"}}, blockchain: ethereum}) {
+        Social {
+          dappName
+          userId
+          profileName
+          profileImage
+        }
+      }
+    }
+  `
+
+  try {
+    const response = await fetch('https://api.airstack.xyz/gql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': process.env.AIRSTACK_API_KEY || '' },
+      body: JSON.stringify({ query })
+    })
+    const data = await response.json()
+    return data.data.Socials.Social[0]
+  } catch (error) {
+    console.error('Error fetching user profile:', error)
+    return null
+  }
+}
+
+app.frame('/', async (c) => {
+  const { buttonValue, status, frameData } = c
   let state: GameState
   
   if (buttonValue && buttonValue.startsWith('move:')) {
@@ -28,8 +76,14 @@ app.frame('/', (c) => {
     state = { board: Array(9).fill(null), currentPlayer: 'X' }
   }
   
-  let { board, currentPlayer } = state
+  let { board, currentPlayer, userProfile } = state
   let message = "Make a move!"
+
+  // Fetch user profile if not already present
+  if (!userProfile && frameData?.fid) {
+    userProfile = await getUserProfileDetails(frameData.fid.toString())
+    state.userProfile = userProfile
+  }
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
@@ -72,7 +126,7 @@ app.frame('/', (c) => {
   }
 
   // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer })
+  const encodedState = encodeState({ board, currentPlayer, userProfile })
 
   return c.res({
     image: (
@@ -88,6 +142,12 @@ app.frame('/', (c) => {
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
+        {userProfile && (
+          <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+            <img src={userProfile.profileImage} alt="Profile" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
+            <p>Welcome, {userProfile.profileName || userProfile.userId}!</p>
+          </div>
+        )}
         {renderBoard(board)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
@@ -201,9 +261,3 @@ function decodeState(encodedState: string): GameState {
 
 export const GET = handle(app)
 export const POST = handle(app)
-
-
-//code that works without user picking the spots they want
-
-
-
