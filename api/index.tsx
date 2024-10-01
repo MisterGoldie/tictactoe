@@ -72,6 +72,91 @@ app.frame('/', (c) => {
   // Encode the state in the button values
   const encodedState = encodeState({ board, currentPlayer })
 
+  // Get available moves
+  const availableMoves = board.reduce((acc, cell, index) => {
+    if (cell === null) acc.push(index)
+    return acc
+  }, [] as number[])
+
+  const intents = availableMoves.length > 3 
+    ? [
+        ...availableMoves.slice(0, 3).map((index) => 
+          <Button value={`move:${encodedState}:${index}`}>
+            {COORDINATES[index]}
+          </Button>
+        ),
+        <Button value={`continue:${encodedState}`}>More moves</Button>,
+      ]
+    : [
+        ...availableMoves.map((index) => 
+          <Button value={`move:${encodedState}:${index}`}>
+            {COORDINATES[index]}
+          </Button>
+        ),
+        <Button value="newgame">New Game</Button>,
+      ]
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {renderBoard(board)}
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+      </div>
+    ),
+    intents: intents,
+  })
+})
+
+app.frame('/continue', (c) => {
+  const { buttonValue } = c
+  if (!buttonValue) {
+    return c.res({
+      image: (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '1080px',
+          height: '1080px',
+          backgroundColor: 'white',
+          color: 'black',
+          fontSize: '36px',
+          fontFamily: 'Arial, sans-serif',
+        }}>
+          Error: No game state provided
+        </div>
+      ),
+      intents: [
+        <Button value="newgame">Start New Game</Button>,
+      ],
+    })
+  }
+
+  const state: GameState = decodeState(buttonValue.split(':')[1])
+  
+  const { board, currentPlayer } = state
+  const message = "Continue your move!"
+
+  // Get remaining available moves
+  const availableMoves = board.reduce((acc, cell, index) => {
+    if (cell === null) acc.push(index)
+    return acc
+  }, [] as number[])
+
+  // Encode the state in the button values
+  const encodedState = encodeState({ board, currentPlayer })
+
   return c.res({
     image: (
       <div style={{
@@ -91,9 +176,9 @@ app.frame('/', (c) => {
       </div>
     ),
     intents: [
-      ...board.map((cell, index) => 
+      ...availableMoves.slice(3, 6).map((index) => 
         <Button value={`move:${encodedState}:${index}`}>
-          {cell === null ? COORDINATES[index] : '-'}
+          {COORDINATES[index]}
         </Button>
       ),
       <Button value="newgame">New Game</Button>,
@@ -203,6 +288,3 @@ function decodeState(encodedState: string): GameState {
 
 export const GET = handle(app)
 export const POST = handle(app)
-
-
-//code with working picks on one page
