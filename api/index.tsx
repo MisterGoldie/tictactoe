@@ -6,7 +6,7 @@ import { neynar } from 'frog/middlewares'
 
 export const app = new Frog({
   basePath: '/api',
-  imageOptions: { width: 1200, height: 628 },
+  imageOptions: { width: 1080, height: 1080 },
   title: 'Tic-Tac-Toe Game',
 }).use(
   neynar({
@@ -34,6 +34,7 @@ function shuffleArray<T>(array: T[]): T[] {
 app.frame('/', (c) => {
   const { buttonValue, status } = c
   const fid = c.frameData?.fid
+  const playerIdentifier = fid ? `FID:${fid}` : 'Player'
   let state: GameState
 
   if (buttonValue && buttonValue.startsWith('move:')) {
@@ -43,23 +44,23 @@ app.frame('/', (c) => {
   }
 
   let { board, currentPlayer, isGameOver } = state
-  let message = fid ? `Your turn (FID: ${fid})` : "Your turn (O)"
+  let message = "Make a move!"
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'O'
       isGameOver = false
-      message = fid ? `New game started! Your turn (FID: ${fid})` : "New game started! Your turn (O)"
+      message = "New game started! Your turn"
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
       if (board[move] === null && !isGameOver) {
         // Player's move
         board[move] = 'O'
-        message = fid ? `You moved at ${COORDINATES[move]}, FID: ${fid}.` : `You moved at ${COORDINATES[move]}.`
+        message = `You moved at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = fid ? `You win, FID: ${fid}! Game over.` : `You win! Game over.`
+          message = `You win! Game over.`
           isGameOver = true
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw."
@@ -78,7 +79,7 @@ app.frame('/', (c) => {
               message += " It's a draw. Game over."
               isGameOver = true
             } else {
-              message += fid ? ` Your turn (FID: ${fid}).` : " Your turn (O)."
+              message += " Your turn."
             }
           }
         }
@@ -117,16 +118,15 @@ app.frame('/', (c) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '1200px',
-        height: '628px',
+        width: '1080px',
+        height: '1080px',
         backgroundColor: 'white',
         color: 'black',
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
-        {renderBoard(board)}
+        {renderBoard(board, playerIdentifier)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        {fid && <div style={{ marginTop: '20px', fontSize: '24px' }}>Player FID: {fid}</div>}
       </div>
     ),
     intents: intents,
@@ -189,7 +189,7 @@ function getBestMove(board: (string | null)[], player: string): number {
   return -1 // No move available
 }
 
-function renderBoard(board: (string | null)[]) {
+function renderBoard(board: (string | null)[], playerIdentifier: string) {
   return (
     <div style={{
       display: 'flex',
@@ -210,7 +210,7 @@ function renderBoard(board: (string | null)[]) {
                 justifyContent: 'center',
                 fontSize: '120px',
               }}>
-                {board[index]}
+                {board[index] === 'O' ? playerIdentifier : board[index]}
               </div>
             );
           })}
