@@ -104,21 +104,28 @@ function renderFrame(c: any, board: (string | null)[], currentPlayer: 'X' | 'O',
 function renderBoard(board: (string | null)[]) {
   return (
     <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, 1fr)',
+      display: 'flex',
+      flexDirection: 'column',
       gap: '10px',
-      fontSize: '48px'
     }}>
-      {board.map((cell, index) => (
-        <div key={index} style={{
-          width: '80px',
-          height: '80px',
-          border: '2px solid black',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          {cell}
+      {[0, 1, 2].map(row => (
+        <div key={row} style={{ display: 'flex', gap: '10px' }}>
+          {[0, 1, 2].map(col => {
+            const index = row * 3 + col;
+            return (
+              <div key={index} style={{
+                width: '80px',
+                height: '80px',
+                border: '2px solid black',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '48px',
+              }}>
+                {board[index]}
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>
