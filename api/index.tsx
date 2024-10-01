@@ -33,8 +33,6 @@ function shuffleArray<T>(array: T[]): T[] {
 
 app.frame('/', (c) => {
   const { buttonValue, status } = c
-  const fid = c.frameData?.fid
-  const playerIdentifier = fid ? `FID:${fid}` : 'Player'
   let state: GameState
 
   if (buttonValue && buttonValue.startsWith('move:')) {
@@ -51,7 +49,7 @@ app.frame('/', (c) => {
       board = Array(9).fill(null)
       currentPlayer = 'O'
       isGameOver = false
-      message = "New game started! Your turn"
+      message = "New game started! Your turn (O)"
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
       if (board[move] === null && !isGameOver) {
@@ -79,7 +77,7 @@ app.frame('/', (c) => {
               message += " It's a draw. Game over."
               isGameOver = true
             } else {
-              message += " Your turn."
+              message += " Your turn (O)."
             }
           }
         }
@@ -125,7 +123,7 @@ app.frame('/', (c) => {
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
-        {renderBoard(board, playerIdentifier)}
+        {renderBoard(board)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
@@ -189,7 +187,7 @@ function getBestMove(board: (string | null)[], player: string): number {
   return -1 // No move available
 }
 
-function renderBoard(board: (string | null)[], playerIdentifier: string) {
+function renderBoard(board: (string | null)[]) {
   return (
     <div style={{
       display: 'flex',
@@ -210,7 +208,7 @@ function renderBoard(board: (string | null)[], playerIdentifier: string) {
                 justifyContent: 'center',
                 fontSize: '120px',
               }}>
-                {board[index] === 'O' ? playerIdentifier : board[index]}
+                {board[index]}
               </div>
             );
           })}
