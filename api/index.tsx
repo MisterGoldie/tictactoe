@@ -16,51 +16,71 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 type GameState = {
   board: (string | null)[];
   isGameOver: boolean;
+  moveCount: number;
 }
 
 app.frame('/', (c) => {
   const { buttonValue, status, previousState } = c
   let state: GameState
   let message = "Click 'New Game' to start!"
+  let debugInfo = "Debug Info:\n"
+
+  debugInfo += `Button Value: ${buttonValue}\n`
+  debugInfo += `Status: ${status}\n`
+  debugInfo += `Previous State: ${previousState}\n`
 
   if (buttonValue === 'newgame' || !previousState) {
-    state = { board: Array(9).fill(null), isGameOver: false }
+    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
     const computerMove = getBestMove(state.board, 'X')
     state.board[computerMove] = 'X'
+    state.moveCount++
     message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
+    debugInfo += "New game started\n"
   } else {
     state = JSON.parse(previousState as string) as GameState
+    debugInfo += `Parsed State: ${JSON.stringify(state)}\n`
   }
 
   if (status === 'response' && buttonValue && buttonValue !== 'newgame' && !state.isGameOver) {
     const move = parseInt(buttonValue)
     if (!isNaN(move) && state.board[move] === null) {
       state.board[move] = 'O'
+      state.moveCount++
       message = `You moved at ${COORDINATES[move]}.`
+      debugInfo += `Player moved at ${COORDINATES[move]}\n`
       
       if (checkWin(state.board)) {
         message = `You win! Click 'New Game' to play again.`
         state.isGameOver = true
+        debugInfo += "Player wins\n"
       } else if (state.board.every((cell) => cell !== null)) {
         message = "It's a draw! Click 'New Game' to play again."
         state.isGameOver = true
+        debugInfo += "Game is a draw\n"
       } else {
         const computerMove = getBestMove(state.board, 'X')
         state.board[computerMove] = 'X'
+        state.moveCount++
         message += ` Computer moved at ${COORDINATES[computerMove]}.`
+        debugInfo += `Computer moved at ${COORDINATES[computerMove]}\n`
         
         if (checkWin(state.board)) {
           message += ` Computer wins! Click 'New Game' to play again.`
           state.isGameOver = true
+          debugInfo += "Computer wins\n"
         } else if (state.board.every((cell) => cell !== null)) {
           message += " It's a draw! Click 'New Game' to play again."
           state.isGameOver = true
+          debugInfo += "Game is a draw\n"
         } else {
           message += " Your turn!"
         }
       }
     }
   }
+
+  debugInfo += `Current State: ${JSON.stringify(state)}\n`
+  debugInfo += `Move Count: ${state.moveCount}\n`
 
   return c.res({
     image: (
@@ -73,11 +93,12 @@ app.frame('/', (c) => {
         height: '1080px',
         backgroundColor: 'white',
         color: 'black',
-        fontSize: '36px',
+        fontSize: '24px',
         fontFamily: 'Arial, sans-serif',
       }}>
         {renderBoard(state.board)}
-        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'left', whiteSpace: 'pre-wrap' }}>{debugInfo}</div>
       </div>
     ),
     intents: [
