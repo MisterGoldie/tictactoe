@@ -1,15 +1,26 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
+import { neynar } from 'frog/middlewares';
 
 export const app = new Frog({
   basePath: '/api',
-  title: 'Tic-Tac-Toe Frame',
-  imageOptions: {
-    width: 1080,
-    height: 1080,
-  },
-  imageAspectRatio: '1:1',
-})
+  imageOptions: { width: 1080, height: 1080 },
+  imageAspectRatio: "1:1",
+  title: '$Moxie Stats Tracker',
+  hub: {
+    apiUrl: "https://hubs.airstack.xyz",
+    fetchOptions: {
+      headers: {
+        "x-airstack-hubs": "AIRSTACK_API_KEY",
+      }
+    }
+  }
+}).use(
+  neynar({
+    apiKey: 'NEYNAR_FROG_FM',
+    features: ['interactor', 'cast'],
+  })
+);
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
