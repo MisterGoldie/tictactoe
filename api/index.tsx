@@ -15,49 +15,64 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
+  currentPlayer: 'X' | 'O';
 }
 
 app.frame('/', (c) => {
   const { buttonValue, status } = c
   let state: GameState
-  let message = "Click 'New Game' to start!"
-
-  if (buttonValue === 'newgame' || !c.previousState) {
-    state = { board: Array(9).fill(null) }
-    const computerMove = getBestMove(state.board, 'X')
-    state.board[computerMove] = 'X'
-    message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
+  
+  if (buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1])
   } else {
-    state = JSON.parse(c.previousState as string) as GameState
+    state = { board: Array(9).fill(null), currentPlayer: 'X' }
   }
+  
+  let { board, currentPlayer } = state
+  let message = "Make a move!"
 
-  let { board } = state
-
-  if (status === 'response' && buttonValue && buttonValue !== 'newgame') {
-    const move = parseInt(buttonValue)
-    if (!isNaN(move) && board[move] === null) {
-      board[move] = 'O'
-      message = `You moved at ${COORDINATES[move]}.`
-      
-      if (checkWin(board)) {
-        message = `You win! Click 'New Game' to play again.`
-      } else if (board.every((cell: string | null) => cell !== null)) {
-        message = "It's a draw! Click 'New Game' to play again."
-      } else {
-        const computerMove = getBestMove(board, 'X')
-        board[computerMove] = 'X'
-        message += ` Computer moved at ${COORDINATES[computerMove]}.`
+  if (status === 'response' && buttonValue) {
+    if (buttonValue === 'newgame') {
+      board = Array(9).fill(null)
+      currentPlayer = 'X'
+      message = "New game started! X's turn"
+    } else if (buttonValue.startsWith('move:')) {
+      // Player's move
+      const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+      if (availableMoves.length > 0) {
+        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)]
+        board[move] = currentPlayer
+        message = `Move made at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message += ` Computer wins! Click 'New Game' to play again.`
+          message = `${currentPlayer} wins! Start a new game!`
         } else if (board.every((cell: string | null) => cell !== null)) {
-          message += " It's a draw! Click 'New Game' to play again."
+          message = "Game over! It's a draw. Start a new game!"
         } else {
-          message += " Your turn!"
+          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+          
+          // Computer's move
+          const computerMove = getBestMove(board, currentPlayer)
+          if (computerMove !== -1) {
+            board[computerMove] = currentPlayer
+            message += ` Computer moved at ${COORDINATES[computerMove]}.`
+            
+            if (checkWin(board)) {
+              message += ` ${currentPlayer} wins! Start a new game!`
+            } else if (board.every((cell: string | null) => cell !== null)) {
+              message += " It's a draw. Start a new game!"
+            } else {
+              currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+              message += ` ${currentPlayer}'s turn.`
+            }
+          }
         }
       }
     }
   }
+
+  // Encode the state in the button values
+  const encodedState = encodeState({ board, currentPlayer })
 
   return c.res({
     image: (
@@ -78,9 +93,7 @@ app.frame('/', (c) => {
       </div>
     ),
     intents: [
-      ...board.map((cell, index) => 
-        cell === null ? <Button value={index.toString()}>{COORDINATES[index]}</Button> : null
-      ).filter(Boolean),
+      <Button value={`move:${encodedState}`}>Make Move</Button>,
       <Button value="newgame">New Game</Button>,
     ],
   })
@@ -176,6 +189,14 @@ function checkWin(board: (string | null)[]) {
     board[pattern[0]] === board[pattern[1]] &&
     board[pattern[0]] === board[pattern[2]]
   )
+}
+
+function encodeState(state: GameState): string {
+  return Buffer.from(JSON.stringify(state)).toString('base64')
+}
+
+function decodeState(encodedState: string): GameState {
+  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
 }
 
 export const GET = handle(app)
