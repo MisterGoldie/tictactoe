@@ -1,3 +1,4 @@
+/** @jsxImportSource frog/jsx */
 
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
@@ -47,7 +48,14 @@ async function getUsername(fid: string): Promise<string> {
     });
 
     const data = await response.json();
-    return data.data.Social[0]?.profileName || 'Player';
+    console.log('Full API response:', JSON.stringify(data));
+    
+    if (data && data.data && Array.isArray(data.data.Social) && data.data.Social.length > 0) {
+      return data.data.Social[0]?.profileName || 'Player';
+    } else {
+      console.log('Unexpected API response structure:', JSON.stringify(data));
+      return 'Player';
+    }
   } catch (error) {
     console.error('Error fetching username:', error);
     return 'Player';
@@ -68,7 +76,12 @@ app.frame('/', async (c) => {
 
   let username = 'Player';
   if (fid) {
-    username = await getUsername(fid.toString());
+    try {
+      username = await getUsername(fid.toString());
+    } catch (error) {
+      console.error('Error getting username:', error);
+      // Use default username 'Player' in case of error
+    }
   }
 
   let state: GameState
