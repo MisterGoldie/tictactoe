@@ -11,7 +11,7 @@ export const app = new Frog({
     apiUrl: "https://hubs.airstack.xyz",
     fetchOptions: {
       headers: {
-        "x-airstack-hubs": "103ba30da492d4a7e89e7026a6d3a234e", // Your Airstack API key
+        "x-airstack-hubs": "AIRSTACK_API_KEY",
       }
     }
   }
@@ -33,34 +33,39 @@ app.frame('/', (c) => {
   const { buttonValue, status } = c
   let state: GameState
   
-  if (buttonValue && buttonValue.startsWith('move:')) {
+  if (buttonValue && buttonValue !== 'newgame') {
     state = decodeState(buttonValue.split(':')[1])
   } else {
     state = { board: Array(9).fill(null), currentPlayer: 'X' }
   }
   
   let { board, currentPlayer } = state
-  let message = "Make a move!"
+  let message = "Computer starts. Your move (O)!"
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'X'
-      message = "New game started! X's turn"
-    } else if (buttonValue.startsWith('move:')) {
-      // Player's move
-      const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
-      if (availableMoves.length > 0) {
-        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)]
-        board[move] = currentPlayer
-        message = `Move made at ${COORDINATES[move]}.`
+      message = "New game started! Computer's turn (X)"
+      
+      // Computer's first move
+      const computerMove = getBestMove(board, currentPlayer)
+      board[computerMove] = currentPlayer
+      message = `Computer moved at ${COORDINATES[computerMove]}. Your turn (O)!`
+      currentPlayer = 'O'
+    } else {
+      const moveIndex = COORDINATES.indexOf(buttonValue.split(':')[0])
+      if (moveIndex !== -1 && board[moveIndex] === null && currentPlayer === 'O') {
+        // User's move
+        board[moveIndex] = currentPlayer
+        message = `You moved at ${COORDINATES[moveIndex]}.`
         
         if (checkWin(board)) {
-          message = `${currentPlayer} wins! Start a new game!`
+          message = `You win! Start a new game!`
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw. Start a new game!"
         } else {
-          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+          currentPlayer = 'X'
           
           // Computer's move
           const computerMove = getBestMove(board, currentPlayer)
@@ -69,15 +74,19 @@ app.frame('/', (c) => {
             message += ` Computer moved at ${COORDINATES[computerMove]}.`
             
             if (checkWin(board)) {
-              message += ` ${currentPlayer} wins! Start a new game!`
+              message += ` Computer wins! Start a new game!`
             } else if (board.every((cell: string | null) => cell !== null)) {
               message += " It's a draw. Start a new game!"
             } else {
-              currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
-              message += ` ${currentPlayer}'s turn.`
+              currentPlayer = 'O'
+              message += ` Your turn (O).`
             }
           }
         }
+      } else if (currentPlayer === 'X') {
+        message = "It's the computer's turn. Please wait."
+      } else {
+        message = "Invalid move. Try again."
       }
     }
   }
@@ -104,7 +113,9 @@ app.frame('/', (c) => {
       </div>
     ),
     intents: [
-      <Button value={`move:${encodedState}`}>Make Move</Button>,
+      ...COORDINATES.map((coord, index) => 
+        board[index] === null ? <Button value={`${coord}:${encodedState}`}>{coord}</Button> : null
+      ).filter(Boolean),
       <Button value="newgame">New Game</Button>,
     ],
   })
