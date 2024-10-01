@@ -1,30 +1,20 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { init } from '@airstack/node'
-import { neynar } from 'frog/middlewares'
+import { ImageResponse } from '@vercel/og'
 
-// Initialize Airstack Client
+// Initialize Airstack client
 init(process.env.AIRSTACK_API_KEY || '')
+
+export const config = {
+  runtime: 'edge',
+}
 
 export const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1080, height: 1080 },
-  imageAspectRatio: '1:1',
   title: 'TicTacToe',
-  hub: {
-    apiUrl: "https://hubs.airstack.xyz",
-    fetchOptions: {
-      headers: {
-        "x-airstack-hubs": process.env.AIRSTACK_API_KEY || '',
-      } as HeadersInit
-    }
-  }
-}).use(
-  neynar({
-    apiKey: process.env.NEYNAR_API_KEY || '',
-    features: ['interactor', 'cast'],
-  })
-)
+})
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
@@ -39,36 +29,8 @@ type GameState = {
   };
 }
 
-async function getUserProfileDetails(userId: string) {
-  const query = `
-    query GetUserProfileDetails {
-      Socials(input: {filter: {userId: {_eq: "${userId}"}}, blockchain: ethereum}) {
-        Social {
-          dappName
-          userId
-          profileName
-          profileImage
-        }
-      }
-    }
-  `
-
-  try {
-    const response = await fetch('https://api.airstack.xyz/gql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': process.env.AIRSTACK_API_KEY || '' },
-      body: JSON.stringify({ query })
-    })
-    const data = await response.json()
-    return data.data.Socials.Social[0]
-  } catch (error) {
-    console.error('Error fetching user profile:', error)
-    return null
-  }
-}
-
 app.frame('/', async (c) => {
-  const { buttonValue, status, frameData } = c
+  const { buttonValue, status } = c
   let state: GameState
   
   if (buttonValue && buttonValue.startsWith('move:')) {
@@ -77,14 +39,8 @@ app.frame('/', async (c) => {
     state = { board: Array(9).fill(null), currentPlayer: 'X' }
   }
   
-  let { board, currentPlayer, userProfile } = state
+  let { board, currentPlayer } = state
   let message = "Make a move!"
-
-  // Fetch user profile if not already present
-  if (!userProfile && frameData?.fid) {
-    userProfile = await getUserProfileDetails(frameData.fid.toString())
-    state.userProfile = userProfile
-  }
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
@@ -127,34 +83,12 @@ app.frame('/', async (c) => {
   }
 
   // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer, userProfile })
+  const encodedState = encodeState({ board, currentPlayer })
+
+  const imageUrl = `${process.env.VERCEL_URL || 'https://tictactoe-nine-xi.vercel.app'}/api/image?state=${encodeURIComponent(encodedState)}`
 
   return c.res({
-    image: (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '1080px',
-        height: '1080px',
-        backgroundColor: 'white',
-        color: 'black',
-        fontSize: '36px',
-        fontFamily: 'Arial, sans-serif',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {userProfile && (
-            <div style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <img src={userProfile.profileImage} alt="Profile" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
-              <p>Welcome, {userProfile.profileName || userProfile.userId}!</p>
-            </div>
-          )}
-          {renderBoard(board)}
-          <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        </div>
-      </div>
-    ),
+    image: imageUrl,
     intents: [
       <Button value={`move:${encodedState}`}>Make Move</Button>,
       <Button value="newgame">New Game</Button>,
@@ -209,6 +143,73 @@ function getBestMove(board: (string | null)[], player: string): number {
   return -1 // No move available
 }
 
+function checkWin(board: (string | null)[]) {
+  const winPatterns = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+    [0, 4, 8], [2, 4, 6] // Diagonals
+  ]
+
+  return winPatterns.some(pattern =>
+    board[pattern[0]] &&
+    board[pattern[0]] === board[pattern[1]] &&
+    board[pattern[0]] === board[pattern[2]]
+  )
+}
+
+function encodeState(state: GameState): string {
+  return Buffer.from(JSON.stringify(state)).toString('base64')
+}
+
+function decodeState(encodedState: string): GameState {
+  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
+}
+
+export default async function handler(req: Request) {
+  const url = new URL(req.url)
+  const state = url.searchParams.get('state')
+  
+  if (!state) {
+    return new Response('Missing state parameter', { status: 400 })
+  }
+
+  const gameState = decodeState(state)
+
+  return new ImageResponse(
+    (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {gameState.userProfile && (
+            <div style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img src={gameState.userProfile.profileImage} alt="Profile" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
+              <p>Welcome, {gameState.userProfile.profileName || gameState.userProfile.userId}!</p>
+            </div>
+          )}
+          {renderBoard(gameState.board)}
+          <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>
+            {gameState.currentPlayer}'s turn
+          </div>
+        </div>
+      </div>
+    ),
+    {
+      width: 1080,
+      height: 1080,
+    }
+  )
+}
+
 function renderBoard(board: (string | null)[]) {
   return (
     <div style={{
@@ -240,29 +241,5 @@ function renderBoard(board: (string | null)[]) {
   )
 }
 
-function checkWin(board: (string | null)[]) {
-  const winPatterns = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6] // Diagonals
-  ]
-
-  return winPatterns.some(pattern =>
-    board[pattern[0]] &&
-    board[pattern[0]] === board[pattern[1]] &&
-    board[pattern[0]] === board[pattern[2]]
-  )
-}
-
-function encodeState(state: GameState): string {
-  return Buffer.from(JSON.stringify(state)).toString('base64')
-}
-
-function decodeState(encodedState: string): GameState {
-  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
-}
-
 export const GET = handle(app)
 export const POST = handle(app)
-
-//idkkkkk
