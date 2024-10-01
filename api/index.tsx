@@ -17,32 +17,40 @@ type GameState = {
   board: (string | null)[];
   isGameOver: boolean;
   moveCount: number;
+  lastButtonValue: string | null;
 }
 
 app.frame('/', (c) => {
-  const { buttonValue, status, previousState } = c
+  const { buttonValue, status } = c
   let state: GameState
   let message = "Click 'New Game' to start!"
   let debugInfo = "Debug Info:\n"
 
   debugInfo += `Button Value: ${buttonValue}\n`
   debugInfo += `Status: ${status}\n`
-  debugInfo += `Previous State: ${previousState}\n`
 
-  if (buttonValue === 'newgame' || !previousState) {
-    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
-    const computerMove = getBestMove(state.board, 'X')
-    state.board[computerMove] = 'X'
-    state.moveCount = 1  // Set to 1 to account for the initial computer move
-    message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
-    debugInfo += `New game started, Computer moved at ${COORDINATES[computerMove]}\n`
+  // Parse the previous state from the button value
+  if (buttonValue && buttonValue !== 'newgame') {
+    const parts = buttonValue.split('|')
+    const prevStateStr = parts[1]  // We only need the second part
+    if (prevStateStr) {
+      state = JSON.parse(prevStateStr)
+      debugInfo += `Parsed State: ${JSON.stringify(state)}\n`
+    } else {
+      state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0, lastButtonValue: null }
+    }
   } else {
-    state = JSON.parse(previousState as string) as GameState
-    debugInfo += `Parsed State: ${JSON.stringify(state)}\n`
+    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0, lastButtonValue: null }
   }
 
-  if (status === 'response' && buttonValue && buttonValue !== 'newgame' && !state.isGameOver) {
-    const move = parseInt(buttonValue)
+  if (buttonValue === 'newgame' || state.moveCount === 0) {
+    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 1, lastButtonValue: null }
+    const computerMove = getBestMove(state.board, 'X')
+    state.board[computerMove] = 'X'
+    message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
+    debugInfo += `New game started, Computer moved at ${COORDINATES[computerMove]}\n`
+  } else if (buttonValue && buttonValue !== 'newgame' && buttonValue !== state.lastButtonValue && !state.isGameOver) {
+    const move = parseInt(buttonValue.split('|')[0])
     if (!isNaN(move) && state.board[move] === null) {
       state.board[move] = 'O'
       state.moveCount++
@@ -79,6 +87,8 @@ app.frame('/', (c) => {
     }
   }
 
+  state.lastButtonValue = buttonValue || null
+
   debugInfo += `Current State: ${JSON.stringify(state)}\n`
   debugInfo += `Move Count: ${state.moveCount}\n`
 
@@ -103,7 +113,7 @@ app.frame('/', (c) => {
     ),
     intents: [
       ...(!state.isGameOver ? state.board.map((cell, index) => 
-        cell === null ? <Button value={index.toString()}>{COORDINATES[index]}</Button> : null
+        cell === null ? <Button value={`${index}|${JSON.stringify(state)}`}>{COORDINATES[index]}</Button> : null
       ).filter(Boolean) : []),
       <Button value="newgame">New Game</Button>,
     ],
