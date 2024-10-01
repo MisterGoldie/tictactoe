@@ -11,68 +11,55 @@ export const app = new Frog({
   imageAspectRatio: '1:1',
 })
 
-const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C9']
+const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
   currentPlayer: 'X' | 'O';
 }
 
-app.frame('/', (c) => {
-  const { buttonValue, status } = c
-  let state: GameState
+function handleMove(state: GameState, move: number): GameState {
+  let { board, currentPlayer } = state;
   
-  if (buttonValue && buttonValue.startsWith('move:')) {
-    state = decodeState(buttonValue.split(':')[1])
-  } else {
-    state = { board: Array(9).fill(null), currentPlayer: 'X' }
-  }
-  
-  let { board, currentPlayer } = state
-  let message = "Make a move!"
-
-  if (status === 'response' && buttonValue) {
-    if (buttonValue === 'newgame') {
-      board = Array(9).fill(null)
-      currentPlayer = 'X'
-      message = "New game started! X's turn"
-    } else if (buttonValue.startsWith('move:')) {
-      // Player's move
-      const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
-      if (availableMoves.length > 0) {
-        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)]
-        board[move] = currentPlayer
-        message = `Move made at ${COORDINATES[move]}.`
-        
-        if (checkWin(board)) {
-          message = `${currentPlayer} wins! Start a new game!`
-        } else if (board.every((cell: string | null) => cell !== null)) {
-          message = "Game over! It's a draw. Start a new game!"
-        } else {
-          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
-          
-          // Computer's move
-          const computerMove = getBestMove(board, currentPlayer)
-          if (computerMove !== -1) {
-            board[computerMove] = currentPlayer
-            message += ` Computer moved at ${COORDINATES[computerMove]}.`
-            
-            if (checkWin(board)) {
-              message += ` ${currentPlayer} wins! Start a new game!`
-            } else if (board.every((cell: string | null) => cell !== null)) {
-              message += " It's a draw. Start a new game!"
-            } else {
-              currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
-              message += ` ${currentPlayer}'s turn.`
-            }
-          }
-        }
-      }
+  if (board[move] === null) {
+    board[move] = currentPlayer;
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    
+    // Computer's move
+    const computerMove = getBestMove(board, currentPlayer);
+    if (computerMove !== -1) {
+      board[computerMove] = currentPlayer;
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
     }
   }
+  
+  return { board, currentPlayer };
+}
 
-  // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer })
+app.frame('/', (c) => {
+  const { buttonValue } = c;
+  let state: GameState;
+  
+  if (buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1]);
+    const move = parseInt(buttonValue.split(':')[2]);
+    state = handleMove(state, move);
+  } else if (buttonValue === 'newgame') {
+    state = { board: Array(9).fill(null), currentPlayer: 'X' };
+  } else {
+    state = { board: Array(9).fill(null), currentPlayer: 'X' };
+  }
+  
+  const { board, currentPlayer } = state;
+  let message = `${currentPlayer}'s turn. Choose a spot!`;
+
+  if (checkWin(board)) {
+    message = `${currentPlayer === 'X' ? 'O' : 'X'} wins! Start a new game!`;
+  } else if (board.every((cell) => cell !== null)) {
+    message = "It's a draw. Start a new game!";
+  }
+
+  const encodedState = encodeState(state);
 
   return c.res({
     image: (
@@ -93,28 +80,41 @@ app.frame('/', (c) => {
       </div>
     ),
     intents: [
-      <Button value={`move:${encodedState}`}>Make Move</Button>,
-      <Button value="newgame">New Game</Button>,
+      ...board.slice(0, 3).map((cell, index) => (
+        <Button value={`move:${encodedState}:${index}`}>
+          {cell || COORDINATES[index]}
+        </Button>
+      )),
       <Button value={`more:${encodedState}`}>More Moves</Button>,
+      <Button value="newgame">New Game</Button>,
     ],
   })
 })
 
 app.frame('/more', (c) => {
-  const { buttonValue } = c
-  let state: GameState
+  const { buttonValue } = c;
+  let state: GameState;
   
-  if (buttonValue && buttonValue.startsWith('more:')) {
-    state = decodeState(buttonValue.split(':')[1])
+  if (buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1]);
+    const move = parseInt(buttonValue.split(':')[2]);
+    state = handleMove(state, move);
+  } else if (buttonValue && buttonValue.startsWith('more:')) {
+    state = decodeState(buttonValue.split(':')[1]);
   } else {
-    state = { board: Array(9).fill(null), currentPlayer: 'X' }
+    state = { board: Array(9).fill(null), currentPlayer: 'X' };
   }
   
-  const { board, currentPlayer } = state
-  const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+  const { board, currentPlayer } = state;
+  let message = `${currentPlayer}'s turn. Choose a spot!`;
 
-  // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer })
+  if (checkWin(board)) {
+    message = `${currentPlayer === 'X' ? 'O' : 'X'} wins! Start a new game!`;
+  } else if (board.every((cell) => cell !== null)) {
+    message = "It's a draw. Start a new game!";
+  }
+
+  const encodedState = encodeState(state);
 
   return c.res({
     image: (
@@ -131,14 +131,17 @@ app.frame('/more', (c) => {
         fontFamily: 'Arial, sans-serif',
       }}>
         {renderBoard(board)}
-        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>Choose a move:</div>
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
     intents: [
-      ...availableMoves.slice(0, 3).map(move => (
-        <Button value={`move:${encodedState}:${move}`}>{COORDINATES[move]}</Button>
+      ...board.slice(3, 6).map((cell, index) => (
+        <Button value={`move:${encodedState}:${index + 3}`}>
+          {cell || COORDINATES[index + 3]}
+        </Button>
       )),
       <Button value={`/:${encodedState}`}>Back</Button>,
+      <Button value="newgame">New Game</Button>,
     ],
   })
 })
