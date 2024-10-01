@@ -11,11 +11,11 @@ export const app = new Frog({
   imageAspectRatio: '1:1',
 })
 
-const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
+const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C9']
 
 type GameState = {
   board: (string | null)[];
-  currentPlayer: 'O' | 'X';
+  currentPlayer: 'X' | 'O';
 }
 
 app.frame('/', (c) => {
@@ -25,7 +25,7 @@ app.frame('/', (c) => {
   if (buttonValue && buttonValue.startsWith('move:')) {
     state = decodeState(buttonValue.split(':')[1])
   } else {
-    state = { board: Array(9).fill(null), currentPlayer: 'O' }
+    state = { board: Array(9).fill(null), currentPlayer: 'X' }
   }
   
   let { board, currentPlayer } = state
@@ -34,37 +34,39 @@ app.frame('/', (c) => {
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
-      currentPlayer = 'O'
-      message = "New game started! Your turn (O)"
+      currentPlayer = 'X'
+      message = "New game started! X's turn"
     } else if (buttonValue.startsWith('move:')) {
-      const move = parseInt(buttonValue.split(':')[2])
-      if (board[move] === null) {
-        // Player's move
-        board[move] = 'O'
-        message = `You moved at ${COORDINATES[move]}.`
+      // Player's move
+      const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+      if (availableMoves.length > 0) {
+        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)]
+        board[move] = currentPlayer
+        message = `Move made at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = `You win! Start a new game!`
+          message = `${currentPlayer} wins! Start a new game!`
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw. Start a new game!"
         } else {
+          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+          
           // Computer's move
-          const computerMove = getBestMove(board, 'X')
+          const computerMove = getBestMove(board, currentPlayer)
           if (computerMove !== -1) {
-            board[computerMove] = 'X'
+            board[computerMove] = currentPlayer
             message += ` Computer moved at ${COORDINATES[computerMove]}.`
             
             if (checkWin(board)) {
-              message += ` Computer wins! Start a new game!`
+              message += ` ${currentPlayer} wins! Start a new game!`
             } else if (board.every((cell: string | null) => cell !== null)) {
               message += " It's a draw. Start a new game!"
             } else {
-              message += " Your turn (O)."
+              currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+              message += ` ${currentPlayer}'s turn.`
             }
           }
         }
-      } else {
-        message = "That spot is already taken! Choose another."
       }
     }
   }
@@ -91,12 +93,52 @@ app.frame('/', (c) => {
       </div>
     ),
     intents: [
-      ...board.map((cell, index) => 
-        <Button value={`move:${encodedState}:${index}`}>
-          {cell === null ? COORDINATES[index] : '-'}
-        </Button>
-      ),
+      <Button value={`move:${encodedState}`}>Make Move</Button>,
       <Button value="newgame">New Game</Button>,
+      <Button value={`more:${encodedState}`}>More Moves</Button>,
+    ],
+  })
+})
+
+app.frame('/more', (c) => {
+  const { buttonValue } = c
+  let state: GameState
+  
+  if (buttonValue && buttonValue.startsWith('more:')) {
+    state = decodeState(buttonValue.split(':')[1])
+  } else {
+    state = { board: Array(9).fill(null), currentPlayer: 'X' }
+  }
+  
+  const { board, currentPlayer } = state
+  const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+
+  // Encode the state in the button values
+  const encodedState = encodeState({ board, currentPlayer })
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {renderBoard(board)}
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>Choose a move:</div>
+      </div>
+    ),
+    intents: [
+      ...availableMoves.slice(0, 3).map(move => (
+        <Button value={`move:${encodedState}:${move}`}>{COORDINATES[move]}</Button>
+      )),
+      <Button value={`/:${encodedState}`}>Back</Button>,
     ],
   })
 })
