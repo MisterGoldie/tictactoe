@@ -73,23 +73,23 @@ app.frame('/', async (c) => {
   }
 
   let { board, currentPlayer, isGameOver, userFid, userProfileName } = state
-  let message = userProfileName ? `${userProfileName}, make a move!` : "Make a move!"
+  let message = userProfileName ? `Your turn (@${userProfileName})` : "Your turn (O)"
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'O'
       isGameOver = false
-      message = userProfileName ? `${userProfileName}, new game started! Your turn (O)` : "New game started! Your turn (O)"
+      message = userProfileName ? `New game started! Your turn (@${userProfileName})` : "New game started! Your turn (O)"
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
       if (board[move] === null && !isGameOver) {
         // Player's move
         board[move] = 'O'
-        message = `You moved at ${COORDINATES[move]}.`
+        message = userProfileName ? `You moved at ${COORDINATES[move]}, @${userProfileName}.` : `You moved at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = `You win! Game over.`
+          message = userProfileName ? `You win, @${userProfileName}! Game over.` : `You win! Game over.`
           isGameOver = true
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw."
@@ -108,7 +108,7 @@ app.frame('/', async (c) => {
               message += " It's a draw. Game over."
               isGameOver = true
             } else {
-              message += " Your turn (O)."
+              message += userProfileName ? ` Your turn (@${userProfileName}).` : " Your turn (O)."
             }
           }
         }
