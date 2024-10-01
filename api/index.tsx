@@ -1,19 +1,14 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
-import { init } from '@airstack/node'
-import { ImageResponse } from '@vercel/og'
-
-// Initialize Airstack client
-init(process.env.AIRSTACK_API_KEY || '')
-
-export const config = {
-  runtime: 'edge',
-}
 
 export const app = new Frog({
   basePath: '/api',
-  imageOptions: { width: 1080, height: 1080 },
-  title: 'TicTacToe',
+  title: 'Tic-Tac-Toe Frame',
+  imageOptions: {
+    width: 1080,
+    height: 1080,
+  },
+  imageAspectRatio: '1:1',
 })
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
@@ -21,15 +16,9 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 type GameState = {
   board: (string | null)[];
   currentPlayer: 'X' | 'O';
-  userProfile?: {
-    dappName: string;
-    userId: string;
-    profileName: string;
-    profileImage: string;
-  };
 }
 
-app.frame('/', async (c) => {
+app.frame('/', (c) => {
   const { buttonValue, status } = c
   let state: GameState
   
@@ -40,44 +29,42 @@ app.frame('/', async (c) => {
   }
   
   let { board, currentPlayer } = state
-  let message = "Make a move!"
+  let message = "Your turn! Choose a spot."
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'X'
-      message = "New game started! X's turn"
+      message = "New game started! Your turn."
     } else if (buttonValue.startsWith('move:')) {
-      // Player's move
-      const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
-      if (availableMoves.length > 0) {
-        const move = availableMoves[Math.floor(Math.random() * availableMoves.length)]
-        board[move] = currentPlayer
-        message = `Move made at ${COORDINATES[move]}.`
+      const move = parseInt(buttonValue.split(':')[2])
+      if (board[move] === null) {
+        // User's move
+        board[move] = 'X'
+        message = `You moved at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = `${currentPlayer} wins! Start a new game!`
+          message = "You win! Start a new game!"
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw. Start a new game!"
         } else {
-          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
-          
           // Computer's move
-          const computerMove = getBestMove(board, currentPlayer)
+          const computerMove = getBestMove(board, 'O')
           if (computerMove !== -1) {
-            board[computerMove] = currentPlayer
+            board[computerMove] = 'O'
             message += ` Computer moved at ${COORDINATES[computerMove]}.`
             
             if (checkWin(board)) {
-              message += ` ${currentPlayer} wins! Start a new game!`
+              message = "Computer wins! Start a new game!"
             } else if (board.every((cell: string | null) => cell !== null)) {
-              message += " It's a draw. Start a new game!"
+              message = "Game over! It's a draw. Start a new game!"
             } else {
-              currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
-              message += ` ${currentPlayer}'s turn.`
+              message += " Your turn!"
             }
           }
         }
+      } else {
+        message = "That spot is already taken! Choose another."
       }
     }
   }
@@ -85,12 +72,36 @@ app.frame('/', async (c) => {
   // Encode the state in the button values
   const encodedState = encodeState({ board, currentPlayer })
 
-  const imageUrl = `${process.env.VERCEL_URL || 'https://tictactoe-nine-xi.vercel.app'}/api/image?state=${encodeURIComponent(encodedState)}`
-
   return c.res({
-    image: imageUrl,
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {renderBoard(board)}
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+      </div>
+    ),
     intents: [
-      <Button value={`move:${encodedState}`}>Make Move</Button>,
+      ...board.map((cell, index) => 
+        cell === null ? (
+          [
+            <Button value={`move:${encodedState}:${index}`}>
+              {COORDINATES[index]}
+            </Button>
+          ]
+        ) : (
+          [<div>{COORDINATES[index]}</div>]
+        )
+      ).flat(),
       <Button value="newgame">New Game</Button>,
     ],
   })
@@ -143,73 +154,6 @@ function getBestMove(board: (string | null)[], player: string): number {
   return -1 // No move available
 }
 
-function checkWin(board: (string | null)[]) {
-  const winPatterns = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-    [0, 4, 8], [2, 4, 6] // Diagonals
-  ]
-
-  return winPatterns.some(pattern =>
-    board[pattern[0]] &&
-    board[pattern[0]] === board[pattern[1]] &&
-    board[pattern[0]] === board[pattern[2]]
-  )
-}
-
-function encodeState(state: GameState): string {
-  return Buffer.from(JSON.stringify(state)).toString('base64')
-}
-
-function decodeState(encodedState: string): GameState {
-  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
-}
-
-export default async function handler(req: Request) {
-  const url = new URL(req.url)
-  const state = url.searchParams.get('state')
-  
-  if (!state) {
-    return new Response('Missing state parameter', { status: 400 })
-  }
-
-  const gameState = decodeState(state)
-
-  return new ImageResponse(
-    (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '1080px',
-        height: '1080px',
-        backgroundColor: 'white',
-        color: 'black',
-        fontSize: '36px',
-        fontFamily: 'Arial, sans-serif',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {gameState.userProfile && (
-            <div style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <img src={gameState.userProfile.profileImage} alt="Profile" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
-              <p>Welcome, {gameState.userProfile.profileName || gameState.userProfile.userId}!</p>
-            </div>
-          )}
-          {renderBoard(gameState.board)}
-          <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>
-            {gameState.currentPlayer}'s turn
-          </div>
-        </div>
-      </div>
-    ),
-    {
-      width: 1080,
-      height: 1080,
-    }
-  )
-}
-
 function renderBoard(board: (string | null)[]) {
   return (
     <div style={{
@@ -239,6 +183,28 @@ function renderBoard(board: (string | null)[]) {
       ))}
     </div>
   )
+}
+
+function checkWin(board: (string | null)[]) {
+  const winPatterns = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+    [0, 4, 8], [2, 4, 6] // Diagonals
+  ]
+
+  return winPatterns.some(pattern =>
+    board[pattern[0]] &&
+    board[pattern[0]] === board[pattern[1]] &&
+    board[pattern[0]] === board[pattern[2]]
+  )
+}
+
+function encodeState(state: GameState): string {
+  return Buffer.from(JSON.stringify(state)).toString('base64')
+}
+
+function decodeState(encodedState: string): GameState {
+  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
 }
 
 export const GET = handle(app)
