@@ -23,6 +23,7 @@ app.frame('/', (c) => {
   const { buttonValue } = c
   let state: GameState
   let message = "Click on a square to start the game!"
+  let debugInfo = "Debug Info:\n"
 
   // Reconstruct state from compact representation
   if (buttonValue && buttonValue !== 'newgame') {
@@ -42,43 +43,57 @@ app.frame('/', (c) => {
     state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
   }
 
+  debugInfo += `Initial State: ${JSON.stringify(state)}\n`
+
   if (buttonValue === 'newgame') {
     state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
     message = "Click on a square to start the game!"
+    debugInfo += "New game started\n"
   } else if (!state.isGameOver && buttonValue) {
     const playerMove = parseInt(buttonValue.split('|')[0])
     if (!isNaN(playerMove) && state.board[playerMove] === null) {
-      state.board[playerMove] = 'X'  // User is X now
+      state.board[playerMove] = 'X'
       state.moveCount++
       message = `You moved at ${COORDINATES[playerMove]}.`
+      debugInfo += `Player moved at ${COORDINATES[playerMove]}\n`
       
       if (checkWin(state.board)) {
         message = `You win! Click 'New Game' to play again.`
         state.isGameOver = true
+        debugInfo += "Player wins\n"
       } else if (state.board.every((cell) => cell !== null)) {
         message = "It's a draw! Click 'New Game' to play again."
         state.isGameOver = true
+        debugInfo += "Game is a draw\n"
       } else {
         // Computer's move
-        const computerMove = getBestMove(state.board, 'O')  // Computer is O now
-        if (computerMove !== -1) {
+        const computerMove = getBestMove(state.board, 'O')
+        debugInfo += `Computer attempting move at ${COORDINATES[computerMove]}\n`
+        if (computerMove !== -1 && state.board[computerMove] === null) {
           state.board[computerMove] = 'O'
           state.moveCount++
           message += ` Computer moved at ${COORDINATES[computerMove]}.`
+          debugInfo += `Computer successfully moved at ${COORDINATES[computerMove]}\n`
           
           if (checkWin(state.board)) {
             message += ` Computer wins! Click 'New Game' to play again.`
             state.isGameOver = true
+            debugInfo += "Computer wins\n"
           } else if (state.board.every((cell) => cell !== null)) {
             message += " It's a draw! Click 'New Game' to play again."
             state.isGameOver = true
+            debugInfo += "Game is a draw\n"
           } else {
             message += " Your turn!"
           }
+        } else {
+          debugInfo += `Error: Invalid computer move ${computerMove}\n`
         }
       }
     }
   }
+
+  debugInfo += `Final State: ${JSON.stringify(state)}\n`
 
   // Create compact state representation
   const compactState = state.board.reduce((acc, cell, index) => 
@@ -100,6 +115,7 @@ app.frame('/', (c) => {
       }}>
         {renderBoard(state.board)}
         <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'left', whiteSpace: 'pre-wrap', fontSize: '12px' }}>{debugInfo}</div>
       </div>
     ),
     intents: [
