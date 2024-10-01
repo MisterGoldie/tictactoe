@@ -22,7 +22,7 @@ type GameState = {
 app.frame('/', (c) => {
   const { buttonValue } = c
   let state: GameState
-  let message = "Click 'New Game' to start!"
+  let message = "Click on a square to start the game!"
 
   // Reconstruct state from compact representation
   if (buttonValue && buttonValue !== 'newgame') {
@@ -42,15 +42,13 @@ app.frame('/', (c) => {
     state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
   }
 
-  if (buttonValue === 'newgame' || state.moveCount === 0) {
-    const computerMove = 4 // Always start in the center for simplicity
-    state.board[computerMove] = 'X'
-    state.moveCount = 1
-    message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
+  if (buttonValue === 'newgame') {
+    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
+    message = "Click on a square to start the game!"
   } else if (!state.isGameOver && buttonValue) {
     const playerMove = parseInt(buttonValue.split('|')[0])
     if (!isNaN(playerMove) && state.board[playerMove] === null) {
-      state.board[playerMove] = 'O'
+      state.board[playerMove] = 'X'  // User is X now
       state.moveCount++
       message = `You moved at ${COORDINATES[playerMove]}.`
       
@@ -61,19 +59,22 @@ app.frame('/', (c) => {
         message = "It's a draw! Click 'New Game' to play again."
         state.isGameOver = true
       } else {
-        const computerMove = getBestMove(state.board, 'X')
-        state.board[computerMove] = 'X'
-        state.moveCount++
-        message += ` Computer moved at ${COORDINATES[computerMove]}.`
-        
-        if (checkWin(state.board)) {
-          message += ` Computer wins! Click 'New Game' to play again.`
-          state.isGameOver = true
-        } else if (state.board.every((cell) => cell !== null)) {
-          message += " It's a draw! Click 'New Game' to play again."
-          state.isGameOver = true
-        } else {
-          message += " Your turn!"
+        // Computer's move
+        const computerMove = getBestMove(state.board, 'O')  // Computer is O now
+        if (computerMove !== -1) {
+          state.board[computerMove] = 'O'
+          state.moveCount++
+          message += ` Computer moved at ${COORDINATES[computerMove]}.`
+          
+          if (checkWin(state.board)) {
+            message += ` Computer wins! Click 'New Game' to play again.`
+            state.isGameOver = true
+          } else if (state.board.every((cell) => cell !== null)) {
+            message += " It's a draw! Click 'New Game' to play again."
+            state.isGameOver = true
+          } else {
+            message += " Your turn!"
+          }
         }
       }
     }
