@@ -19,44 +19,42 @@ type GameState = {
 }
 
 app.frame('/', (c) => {
-  const { buttonValue, status } = c
+  const { buttonValue, status, previousState } = c
   let state: GameState
   let message = "Click 'New Game' to start!"
 
-  if (buttonValue === 'newgame' || !c.previousState) {
+  if (buttonValue === 'newgame' || !previousState) {
     state = { board: Array(9).fill(null), isGameOver: false }
     const computerMove = getBestMove(state.board, 'X')
     state.board[computerMove] = 'X'
     message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
   } else {
-    state = JSON.parse(c.previousState as string) as GameState
+    state = JSON.parse(previousState as string) as GameState
   }
 
-  let { board, isGameOver } = state
-
-  if (status === 'response' && buttonValue && buttonValue !== 'newgame' && !isGameOver) {
+  if (status === 'response' && buttonValue && buttonValue !== 'newgame' && !state.isGameOver) {
     const move = parseInt(buttonValue)
-    if (!isNaN(move) && board[move] === null) {
-      board[move] = 'O'
+    if (!isNaN(move) && state.board[move] === null) {
+      state.board[move] = 'O'
       message = `You moved at ${COORDINATES[move]}.`
       
-      if (checkWin(board)) {
+      if (checkWin(state.board)) {
         message = `You win! Click 'New Game' to play again.`
-        isGameOver = true
-      } else if (board.every((cell) => cell !== null)) {
+        state.isGameOver = true
+      } else if (state.board.every((cell) => cell !== null)) {
         message = "It's a draw! Click 'New Game' to play again."
-        isGameOver = true
+        state.isGameOver = true
       } else {
-        const computerMove = getBestMove(board, 'X')
-        board[computerMove] = 'X'
+        const computerMove = getBestMove(state.board, 'X')
+        state.board[computerMove] = 'X'
         message += ` Computer moved at ${COORDINATES[computerMove]}.`
         
-        if (checkWin(board)) {
+        if (checkWin(state.board)) {
           message += ` Computer wins! Click 'New Game' to play again.`
-          isGameOver = true
-        } else if (board.every((cell) => cell !== null)) {
+          state.isGameOver = true
+        } else if (state.board.every((cell) => cell !== null)) {
           message += " It's a draw! Click 'New Game' to play again."
-          isGameOver = true
+          state.isGameOver = true
         } else {
           message += " Your turn!"
         }
@@ -78,12 +76,12 @@ app.frame('/', (c) => {
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
-        {renderBoard(board)}
+        {renderBoard(state.board)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
     intents: [
-      ...(!isGameOver ? board.map((cell, index) => 
+      ...(!state.isGameOver ? state.board.map((cell, index) => 
         cell === null ? <Button value={index.toString()}>{COORDINATES[index]}</Button> : null
       ).filter(Boolean) : []),
       <Button value="newgame">New Game</Button>,
