@@ -1,33 +1,15 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
-import { neynar } from 'frog/middlewares';
-
-
-const AIRSTACK_API_KEY = process.env.AIRSTACK_API_KEY || '';
-const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY || '';
-const MOXIE_API_URL = "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest";
-
 
 export const app = new Frog({
   basePath: '/api',
-  imageOptions: { width: 1200, height: 628 },
-  title: '$HAM Token Tracker',
-  hub: {
-    apiUrl: "https://hubs.airstack.xyz",
-    fetchOptions: {
-      headers: {
-        "x-airstack-hubs": AIRSTACK_API_KEY, 
-      }
-    }
-  }
-}).use(
-  neynar({
-    apiKey: 'NEYNAR_FROG_FM',
-    features: ['interactor', 'cast'],
-  })
-);
-
-
+  title: 'Tic-Tac-Toe Frame',
+  imageOptions: {
+    width: 1080,
+    height: 1080,
+  },
+  imageAspectRatio: '1:1',
+})
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
@@ -43,7 +25,9 @@ app.frame('/', (c) => {
   let message = "Click on a square to start the game!"
   let debugInfo = "Debug Info:\n"
 
-  // Reconstruct state from compact representation
+  debugInfo += `Button Value: ${buttonValue}\n`
+
+  // Initialize or reconstruct state
   if (buttonValue && buttonValue !== 'newgame') {
     const [moves, count] = buttonValue.split('|')
     state = {
@@ -57,23 +41,20 @@ app.frame('/', (c) => {
         state.board[index] = i % 2 === 0 ? 'X' : 'O'
       }
     }
+    debugInfo += `Reconstructed State: ${JSON.stringify(state)}\n`
   } else {
     state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
+    debugInfo += "New game started\n"
   }
 
-  debugInfo += `Initial State: ${JSON.stringify(state)}\n`
-
-  if (buttonValue === 'newgame') {
-    state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
-    message = "Click on a square to start the game!"
-    debugInfo += "New game started\n"
-  } else if (!state.isGameOver && buttonValue) {
+  if (buttonValue && buttonValue !== 'newgame' && !state.isGameOver) {
     const playerMove = parseInt(buttonValue.split('|')[0])
     if (!isNaN(playerMove) && state.board[playerMove] === null) {
       state.board[playerMove] = 'X'
       state.moveCount++
       message = `You moved at ${COORDINATES[playerMove]}.`
       debugInfo += `Player moved at ${COORDINATES[playerMove]}\n`
+      debugInfo += `State after player move: ${JSON.stringify(state)}\n`
       
       if (checkWin(state.board)) {
         message = `You win! Click 'New Game' to play again.`
@@ -92,6 +73,7 @@ app.frame('/', (c) => {
           state.moveCount++
           message += ` Computer moved at ${COORDINATES[computerMove]}.`
           debugInfo += `Computer successfully moved at ${COORDINATES[computerMove]}\n`
+          debugInfo += `State after computer move: ${JSON.stringify(state)}\n`
           
           if (checkWin(state.board)) {
             message += ` Computer wins! Click 'New Game' to play again.`
@@ -108,6 +90,8 @@ app.frame('/', (c) => {
           debugInfo += `Error: Invalid computer move ${computerMove}\n`
         }
       }
+    } else {
+      debugInfo += `Invalid player move: ${playerMove}\n`
     }
   }
 
@@ -133,7 +117,7 @@ app.frame('/', (c) => {
       }}>
         {renderBoard(state.board)}
         <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
-        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'left', whiteSpace: 'pre-wrap', fontSize: '12px' }}>{debugInfo}</div>
+        <div style={{ marginTop: '20px', maxWidth: '900px', textAlign: 'left', whiteSpace: 'pre-wrap', fontSize: '16px' }}>{debugInfo}</div>
       </div>
     ),
     intents: [
@@ -144,6 +128,8 @@ app.frame('/', (c) => {
     ],
   })
 })
+
+// ... rest of the code (getBestMove, renderBoard, checkWin) remains the same
 
 function getBestMove(board: (string | null)[], player: string): number {
   const opponent = player === 'X' ? 'O' : 'X'
