@@ -4,6 +4,11 @@ import { handle } from 'frog/vercel'
 export const app = new Frog({
   basePath: '/api',
   title: 'Tic-Tac-Toe Frame',
+  imageOptions: {
+    width: 1080,
+    height: 1080,
+  },
+  imageAspectRatio: '1:1',
 })
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
@@ -76,15 +81,15 @@ app.frame('/', (c) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '100%',
-        width: '100%',
+        width: '1080px',
+        height: '1080px',
         backgroundColor: 'white',
         color: 'black',
-        fontSize: '24px',
+        fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
         {renderBoard(board)}
-        <div style={{ marginTop: '20px' }}>{message}</div>
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
     intents: [
@@ -146,21 +151,21 @@ function renderBoard(board: (string | null)[]) {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px',
+      gap: '20px',
     }}>
       {[0, 1, 2].map(row => (
-        <div key={row} style={{ display: 'flex', gap: '10px' }}>
+        <div key={row} style={{ display: 'flex', gap: '20px' }}>
           {[0, 1, 2].map(col => {
             const index = row * 3 + col;
             return (
               <div key={index} style={{
-                width: '80px',
-                height: '80px',
-                border: '2px solid black',
+                width: '200px',
+                height: '200px',
+                border: '4px solid black',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '48px',
+                fontSize: '120px',
               }}>
                 {board[index]}
               </div>
