@@ -102,7 +102,7 @@ app.frame('/', async (c) => {
   }
 
   let { board, currentPlayer, isGameOver } = state
-  let message = `Make a move, ${username}!`
+  let message = `Make a move!`  // This is the only line that changed
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
