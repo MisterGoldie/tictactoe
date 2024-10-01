@@ -3,12 +3,13 @@ import { handle } from 'frog/vercel'
 import { init } from '@airstack/node'
 import { neynar } from 'frog/middlewares'
 
-// Initialize Airstack client
+// Initialize Airstack Client
 init(process.env.AIRSTACK_API_KEY || '')
 
 export const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1080, height: 1080 },
+  imageAspectRatio: '1:1',
   title: 'TicTacToe',
   hub: {
     apiUrl: "https://hubs.airstack.xyz",
@@ -142,14 +143,16 @@ app.frame('/', async (c) => {
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
-        {userProfile && (
-          <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-            <img src={userProfile.profileImage} alt="Profile" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
-            <p>Welcome, {userProfile.profileName || userProfile.userId}!</p>
-          </div>
-        )}
-        {renderBoard(board)}
-        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {userProfile && (
+            <div style={{ marginBottom: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img src={userProfile.profileImage} alt="Profile" style={{ width: '100px', height: '100px', borderRadius: '50%' }} />
+              <p>Welcome, {userProfile.profileName || userProfile.userId}!</p>
+            </div>
+          )}
+          {renderBoard(board)}
+          <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        </div>
       </div>
     ),
     intents: [
@@ -261,3 +264,5 @@ function decodeState(encodedState: string): GameState {
 
 export const GET = handle(app)
 export const POST = handle(app)
+
+//idkkkkk
