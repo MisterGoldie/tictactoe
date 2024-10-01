@@ -33,9 +33,9 @@ app.frame('/', (c) => {
     state = { board: Array(9).fill(null), isGameOver: false, moveCount: 0 }
     const computerMove = getBestMove(state.board, 'X')
     state.board[computerMove] = 'X'
-    state.moveCount++
+    state.moveCount = 1  // Set to 1 to account for the initial computer move
     message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
-    debugInfo += "New game started\n"
+    debugInfo += `New game started, Computer moved at ${COORDINATES[computerMove]}\n`
   } else {
     state = JSON.parse(previousState as string) as GameState
     debugInfo += `Parsed State: ${JSON.stringify(state)}\n`
