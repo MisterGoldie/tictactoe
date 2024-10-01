@@ -1,10 +1,13 @@
-/** @jsxImportSource frog/jsx */
 
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
+import { NeynarVariables } from 'frog/middlewares'
 
-export const app = new Frog({
+const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql';
+const AIRSTACK_API_KEY = process.env.AIRSTACK_API_KEY as string;
+
+export const app = new Frog<{ Variables: NeynarVariables }>({
   basePath: '/api',
   imageOptions: { width: 1080, height: 1080 },
   imageAspectRatio: '1:1',
@@ -24,6 +27,33 @@ type GameState = {
   isGameOver: boolean;
 }
 
+async function getUsername(fid: string): Promise<string> {
+  const query = `
+    query ($fid: String!) {
+      Social(input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: $fid}}, blockchain: ethereum}) {
+        profileName
+      }
+    }
+  `;
+
+  try {
+    const response = await fetch(AIRSTACK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': AIRSTACK_API_KEY,
+      },
+      body: JSON.stringify({ query, variables: { fid } }),
+    });
+
+    const data = await response.json();
+    return data.data.Social[0]?.profileName || 'Player';
+  } catch (error) {
+    console.error('Error fetching username:', error);
+    return 'Player';
+  }
+}
+
 function shuffleArray<T>(array: T[]): T[] {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -32,8 +62,15 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-app.frame('/', (c) => {
-  const { buttonValue, status } = c
+app.frame('/', async (c) => {
+  const { buttonValue, status, frameData } = c
+  const fid = frameData?.fid;
+
+  let username = 'Player';
+  if (fid) {
+    username = await getUsername(fid.toString());
+  }
+
   let state: GameState
 
   if (buttonValue && buttonValue.startsWith('move:')) {
@@ -43,23 +80,23 @@ app.frame('/', (c) => {
   }
 
   let { board, currentPlayer, isGameOver } = state
-  let message = "Make a move!"
+  let message = `Make a move, ${username}!`
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
       board = Array(9).fill(null)
       currentPlayer = 'O'
       isGameOver = false
-      message = "New game started! Your turn (O)"
+      message = `New game started! Your turn, ${username}`
     } else if (buttonValue.startsWith('move:')) {
       const move = parseInt(buttonValue.split(':')[2])
       if (board[move] === null && !isGameOver) {
         // Player's move
         board[move] = 'O'
-        message = `You moved at ${COORDINATES[move]}.`
+        message = `${username} moved at ${COORDINATES[move]}.`
         
         if (checkWin(board)) {
-          message = `You win! Game over.`
+          message = `${username} wins! Game over.`
           isGameOver = true
         } else if (board.every((cell: string | null) => cell !== null)) {
           message = "Game over! It's a draw."
@@ -78,7 +115,7 @@ app.frame('/', (c) => {
               message += " It's a draw. Game over."
               isGameOver = true
             } else {
-              message += " Your turn (O)."
+              message += ` Your turn, ${username}.`
             }
           }
         }
