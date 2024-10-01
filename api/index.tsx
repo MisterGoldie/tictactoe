@@ -15,45 +15,45 @@ const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
+  lastMove: number | null;
 }
 
+// Main game route
 app.frame('/', (c) => {
-  const { buttonValue, status } = c
-  let state: GameState
-  let message = "Click 'New Game' to start!"
+  const { buttonValue, previousState } = c
+  let state: GameState = previousState ? JSON.parse(previousState as string) : { board: Array(9).fill(null), lastMove: null }
 
-  if (buttonValue === 'newgame' || !c.previousState) {
-    state = { board: Array(9).fill(null) }
+  let message = "Click 'Show Moves' to see available positions."
+
+  if (buttonValue === 'newgame' || !previousState) {
+    state = { board: Array(9).fill(null), lastMove: null }
     const computerMove = getBestMove(state.board, 'X')
     state.board[computerMove] = 'X'
-    message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
-  } else {
-    state = JSON.parse(c.previousState as string) as GameState
-  }
-
-  let { board } = state
-
-  if (status === 'response' && buttonValue && buttonValue !== 'newgame') {
+    state.lastMove = computerMove
+    message = `Computer moved at ${COORDINATES[computerMove]}. Click 'Show Moves' to play.`
+  } else if (buttonValue && buttonValue !== 'showmoves') {
     const move = parseInt(buttonValue)
-    if (!isNaN(move) && board[move] === null) {
-      board[move] = 'O'
+    if (!isNaN(move) && state.board[move] === null) {
+      state.board[move] = 'O'
+      state.lastMove = move
       message = `You moved at ${COORDINATES[move]}.`
       
-      if (checkWin(board)) {
+      if (checkWin(state.board)) {
         message = `You win! Click 'New Game' to play again.`
-      } else if (board.every((cell: string | null) => cell !== null)) {
+      } else if (state.board.every((cell: string | null) => cell !== null)) {
         message = "It's a draw! Click 'New Game' to play again."
       } else {
-        const computerMove = getBestMove(board, 'X')
-        board[computerMove] = 'X'
+        const computerMove = getBestMove(state.board, 'X')
+        state.board[computerMove] = 'X'
+        state.lastMove = computerMove
         message += ` Computer moved at ${COORDINATES[computerMove]}.`
         
-        if (checkWin(board)) {
+        if (checkWin(state.board)) {
           message += ` Computer wins! Click 'New Game' to play again.`
-        } else if (board.every((cell: string | null) => cell !== null)) {
+        } else if (state.board.every((cell: string | null) => cell !== null)) {
           message += " It's a draw! Click 'New Game' to play again."
         } else {
-          message += " Your turn!"
+          message += " Click 'Show Moves' to see available positions."
         }
       }
     }
@@ -73,15 +73,45 @@ app.frame('/', (c) => {
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
-        {renderBoard(board)}
+        {renderBoard(state.board, state.lastMove)}
         <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
     intents: [
-      ...board.map((cell, index) => 
-        cell === null ? <Button value={index.toString()}>{COORDINATES[index]}</Button> : null
-      ).filter(Boolean),
+      <Button value="showmoves">Show Moves</Button>,
       <Button value="newgame">New Game</Button>,
+    ],
+  })
+})
+
+// Route for showing available moves
+app.frame('/moves', (c) => {
+  const state: GameState = JSON.parse(c.previousState as string)
+  const availableMoves = state.board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {renderBoard(state.board, state.lastMove)}
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>
+          Available moves: {availableMoves.map(move => COORDINATES[move]).join(', ')}
+        </div>
+      </div>
+    ),
+    intents: [
+      ...availableMoves.map(move => <Button value={move.toString()}>{COORDINATES[move]}</Button>),
+      <Button value="back">Back</Button>,
     ],
   })
 })
@@ -133,7 +163,7 @@ function getBestMove(board: (string | null)[], player: string): number {
   return -1 // No move available
 }
 
-function renderBoard(board: (string | null)[]) {
+function renderBoard(board: (string | null)[], lastMove: number | null) {
   return (
     <div style={{
       display: 'flex',
@@ -148,7 +178,7 @@ function renderBoard(board: (string | null)[]) {
               <div key={index} style={{
                 width: '200px',
                 height: '200px',
-                border: '4px solid black',
+                border: lastMove === index ? '4px solid red' : '4px solid black',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
