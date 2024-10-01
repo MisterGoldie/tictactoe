@@ -1,15 +1,33 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
+import { neynar } from 'frog/middlewares';
+
+
+const AIRSTACK_API_KEY = process.env.AIRSTACK_API_KEY || '';
+const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY || '';
+const MOXIE_API_URL = "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest";
+
 
 export const app = new Frog({
   basePath: '/api',
-  title: 'Tic-Tac-Toe Frame',
-  imageOptions: {
-    width: 1080,
-    height: 1080,
-  },
-  imageAspectRatio: '1:1',
-})
+  imageOptions: { width: 1200, height: 628 },
+  title: '$HAM Token Tracker',
+  hub: {
+    apiUrl: "https://hubs.airstack.xyz",
+    fetchOptions: {
+      headers: {
+        "x-airstack-hubs": AIRSTACK_API_KEY, 
+      }
+    }
+  }
+}).use(
+  neynar({
+    apiKey: 'NEYNAR_FROG_FM',
+    features: ['interactor', 'cast'],
+  })
+);
+
+
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
