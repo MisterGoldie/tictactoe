@@ -1,114 +1,63 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 
-// RapidAPI configuration
-const rapidApiKey = process.env.RAPID_API_KEY
-const rapidApiHost = 'stujo-tic-tac-toe-stujo-v1.p.rapidapi.com'
-
 export const app = new Frog({
   basePath: '/api',
   title: 'Tic-Tac-Toe Frame',
+  imageOptions: {
+    width: 1080,
+    height: 1080,
+  },
+  imageAspectRatio: '1:1',
 })
 
 const COORDINATES = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']
 
 type GameState = {
   board: (string | null)[];
-  currentPlayer: 'X' | 'O';
 }
 
-app.frame('/', async (c) => {
+app.frame('/', (c) => {
   const { buttonValue, status } = c
   let state: GameState
-  
-  if (buttonValue && buttonValue.startsWith('move:')) {
-    state = decodeState(buttonValue.split(':')[1])
+  let message = "Click 'New Game' to start!"
+
+  if (buttonValue === 'newgame' || !c.previousState) {
+    state = { board: Array(9).fill(null) }
+    const computerMove = getBestMove(state.board, 'X')
+    state.board[computerMove] = 'X'
+    message = `Computer moved at ${COORDINATES[computerMove]}. Your turn!`
   } else {
-    state = { board: Array(9).fill(null), currentPlayer: 'X' }
+    state = JSON.parse(c.previousState as string) as GameState
   }
-  
-  let { board, currentPlayer } = state
-  let message = "Make a move!"
 
-  if (status === 'response' && buttonValue) {
-    if (buttonValue === 'newgame') {
-      board = Array(9).fill(null)
-      currentPlayer = 'X'
-      message = "New game started! X's turn"
-    } else if (buttonValue.startsWith('move:')) {
-      const boardState = board.map((cell: string | null) => cell || '-').join('')
-      const player = currentPlayer.toLowerCase()
+  let { board } = state
 
-      try {
-        const apiUrl = `https://${rapidApiHost}/${boardState}/${player}`
-        console.log('Attempting API call to:', apiUrl) // Log the full URL
-
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-key': rapidApiKey || '',
-            'x-rapidapi-host': rapidApiHost,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new TypeError("Oops, we haven't got JSON!");
-        }
-
-        const text = await response.text();
-        console.log("API Response:", text);
-
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          console.error("Failed to parse JSON:", e);
-          throw new Error("Invalid JSON response from API");
-        }
-
-        const move = data.recommendation
-
-        if (move !== undefined) {
-          board[move] = currentPlayer
-          message = `Move made at ${COORDINATES[move]}.`
-          
-          if (checkWin(board)) {
-            message = `${currentPlayer} wins! Start a new game!`
-          } else if (board.every((cell: string | null) => cell !== null)) {
-            message = "Game over! It's a draw. Start a new game!"
-          } else {
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
-            message += ` ${currentPlayer}'s turn.`
-          }
+  if (status === 'response' && buttonValue && buttonValue !== 'newgame') {
+    const move = parseInt(buttonValue)
+    if (!isNaN(move) && board[move] === null) {
+      board[move] = 'O'
+      message = `You moved at ${COORDINATES[move]}.`
+      
+      if (checkWin(board)) {
+        message = `You win! Click 'New Game' to play again.`
+      } else if (board.every((cell: string | null) => cell !== null)) {
+        message = "It's a draw! Click 'New Game' to play again."
+      } else {
+        const computerMove = getBestMove(board, 'X')
+        board[computerMove] = 'X'
+        message += ` Computer moved at ${COORDINATES[computerMove]}.`
+        
+        if (checkWin(board)) {
+          message += ` Computer wins! Click 'New Game' to play again.`
+        } else if (board.every((cell: string | null) => cell !== null)) {
+          message += " It's a draw! Click 'New Game' to play again."
         } else {
-          message = "Game over! It's a draw. Start a new game!"
-        }
-      } catch (error: unknown) {
-        console.error('Error making API request:', error)
-        if (error instanceof Error) {
-          message = `Error: ${error.message}. Try again or start a new game.`
-        } else {
-          message = "An unknown error occurred. Try again or start a new game."
-        }
-        // Fallback: Make a random move
-        const availableMoves = board.map((cell, index) => cell === null ? index : -1).filter(index => index !== -1)
-        if (availableMoves.length > 0) {
-          const randomMove = availableMoves[Math.floor(Math.random() * availableMoves.length)]
-          board[randomMove] = currentPlayer
-          message += ` Random move made at ${COORDINATES[randomMove]}.`
-          currentPlayer = currentPlayer === 'X' ? 'O' : 'X'
+          message += " Your turn!"
         }
       }
     }
   }
-
-  // Encode the state in the button values
-  const encodedState = encodeState({ board, currentPlayer })
 
   return c.res({
     image: (
@@ -117,44 +66,93 @@ app.frame('/', async (c) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        height: '100%',
-        width: '100%',
+        width: '1080px',
+        height: '1080px',
         backgroundColor: 'white',
         color: 'black',
-        fontSize: '24px',
+        fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
         {renderBoard(board)}
-        <div style={{ marginTop: '20px' }}>{message}</div>
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
       </div>
     ),
     intents: [
-      <Button value={`move:${encodedState}`}>Make Move</Button>,
+      ...board.map((cell, index) => 
+        cell === null ? <Button value={index.toString()}>{COORDINATES[index]}</Button> : null
+      ).filter(Boolean),
       <Button value="newgame">New Game</Button>,
     ],
   })
 })
+
+function getBestMove(board: (string | null)[], player: string): number {
+  const opponent = player === 'X' ? 'O' : 'X'
+
+  // Check for winning move
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) {
+      board[i] = player
+      if (checkWin(board)) {
+        board[i] = null
+        return i
+      }
+      board[i] = null
+    }
+  }
+
+  // Check for blocking opponent's winning move
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) {
+      board[i] = opponent
+      if (checkWin(board)) {
+        board[i] = null
+        return i
+      }
+      board[i] = null
+    }
+  }
+
+  // Choose center if available
+  if (board[4] === null) return 4
+
+  // Choose corners
+  const corners = [0, 2, 6, 8]
+  const availableCorners = corners.filter(i => board[i] === null)
+  if (availableCorners.length > 0) {
+    return availableCorners[Math.floor(Math.random() * availableCorners.length)]
+  }
+
+  // Choose any available side
+  const sides = [1, 3, 5, 7]
+  const availableSides = sides.filter(i => board[i] === null)
+  if (availableSides.length > 0) {
+    return availableSides[Math.floor(Math.random() * availableSides.length)]
+  }
+
+  return -1 // No move available
+}
 
 function renderBoard(board: (string | null)[]) {
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      gap: '10px',
+      gap: '20px',
     }}>
       {[0, 1, 2].map(row => (
-        <div key={row} style={{ display: 'flex', gap: '10px' }}>
+        <div key={row} style={{ display: 'flex', gap: '20px' }}>
           {[0, 1, 2].map(col => {
             const index = row * 3 + col;
             return (
               <div key={index} style={{
-                width: '80px',
-                height: '80px',
-                border: '2px solid black',
+                width: '200px',
+                height: '200px',
+                border: '4px solid black',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '48px',
+                fontSize: '120px',
               }}>
                 {board[index]}
               </div>
@@ -178,14 +176,6 @@ function checkWin(board: (string | null)[]) {
     board[pattern[0]] === board[pattern[1]] &&
     board[pattern[0]] === board[pattern[2]]
   )
-}
-
-function encodeState(state: GameState): string {
-  return Buffer.from(JSON.stringify(state)).toString('base64')
-}
-
-function decodeState(encodedState: string): GameState {
-  return JSON.parse(Buffer.from(encodedState, 'base64').toString())
 }
 
 export const GET = handle(app)
