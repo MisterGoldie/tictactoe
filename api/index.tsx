@@ -1,6 +1,5 @@
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
-import { neynar } from 'frog/middlewares'
 
 export const app = new Frog({
   basePath: '/api',
@@ -213,4 +212,8 @@ export const GET = handle(app)
 export const POST = handle(app)
 
 
+
+function neynar(arg0: { apiKey: string; features: string[]; }): any {
+  throw new Error('Function not implemented.');
+}
 //code that works without user picking the spots they want
