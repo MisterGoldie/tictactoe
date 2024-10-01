@@ -31,8 +31,10 @@ type GameState = {
 async function getUsername(fid: string): Promise<string> {
   const query = `
     query ($fid: String!) {
-      Social(input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: $fid}}, blockchain: ethereum}) {
-        profileName
+      Socials(input: {filter: {dappName: {_eq: farcaster}, userId: {_eq: $fid}}, blockchain: ethereum}) {
+        Social {
+          profileName
+        }
       }
     }
   `;
@@ -50,8 +52,8 @@ async function getUsername(fid: string): Promise<string> {
     const data = await response.json();
     console.log('Full API response:', JSON.stringify(data));
     
-    if (data && data.data && Array.isArray(data.data.Social) && data.data.Social.length > 0) {
-      return data.data.Social[0]?.profileName || 'Player';
+    if (data && data.data && data.data.Socials && Array.isArray(data.data.Socials.Social) && data.data.Socials.Social.length > 0) {
+      return data.data.Socials.Social[0]?.profileName || 'Player';
     } else {
       console.log('Unexpected API response structure:', JSON.stringify(data));
       return 'Player';
