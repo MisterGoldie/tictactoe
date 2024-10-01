@@ -16,13 +16,13 @@ export const app = new Frog<{ Variables: NeynarVariables }>({
     apiUrl: "https://hubs.airstack.xyz",
     fetchOptions: {
       headers: {
-        "x-airstack-hubs": AIRSTACK_API_KEY, // Using the environment variable
+        "x-airstack-hubs": AIRSTACK_API_KEY, 
       }
     }
   }
 }).use(
   neynar({
-    apiKey: NEYNAR_API_KEY, // Using the environment variable
+    apiKey: NEYNAR_API_KEY, 
     features: ['interactor', 'cast'],
   })
 );
