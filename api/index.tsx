@@ -323,7 +323,6 @@ app.frame('/share', (c) => {
         textAlign: 'center',
       }}>
         <h1 style={{ marginBottom: '20px' }}>Thanks for Playing!</h1>
-        <p>{shareText}</p>
         <p style={{ fontSize: '30px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
       </div>
     ),
