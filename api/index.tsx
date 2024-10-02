@@ -225,34 +225,40 @@ app.frame('/game', async (c) => {
         </Button>
       )
 
+  // Break the message into multiple lines if it's too long
+  const formattedMessage = message.length > 50 ? message.match(/.{1,50}(\s|$)/g)?.join('\n') : message;
+
   return c.res({
     image: (
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeif6knruive34r5sebbr5jcu6w65sast2hivnouqeid3dolyn76e3u.ipfs.w3s.link/Frame%2025%20(4).png)',
-        backgroundSize: '1080px 1080px', // Fixed size matching the container
+        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
+        backgroundSize: '1080px 1080px',
         backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat', // Prevent repeating
+        backgroundRepeat: 'no-repeat',
         color: 'white',
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
+        padding: '40px 0',
       }}>
         {renderBoard(state.board)}
         <div style={{ 
-          marginTop: '40px', 
+          width: '100%',
           maxWidth: '900px', 
           textAlign: 'center', 
           backgroundColor: 'rgba(255, 255, 255, 0.7)', 
           padding: '20px', 
           borderRadius: '10px', 
-          color: 'black' 
+          color: 'black',
+          marginTop: '20px',
+          whiteSpace: 'pre-wrap',
         }}>
-          {message}
+          {formattedMessage}
         </div>
       </div>
     ),
@@ -263,28 +269,24 @@ app.frame('/game', async (c) => {
 function renderBoard(board: (string | null)[]) {
   return (
     <div style={{
-      display: 'flex',
-      flexDirection: 'column',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 200px)',
+      gridTemplateRows: 'repeat(3, 200px)',
       gap: '20px',
+      margin: '0 auto',
     }}>
-      {[0, 1, 2].map(row => (
-        <div key={row} style={{ display: 'flex', gap: '20px' }}>
-          {[0, 1, 2].map(col => {
-            const index = row * 3 + col;
-            return (
-              <div key={index} style={{
-                width: '200px',
-                height: '200px',
-                border: '4px solid black',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '120px',
-              }}>
-                {board[index]}
-              </div>
-            );
-          })}
+      {board.map((cell, index) => (
+        <div key={index} style={{
+          width: '200px',
+          height: '200px',
+          border: '4px solid black',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '120px',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        }}>
+          {cell}
         </div>
       ))}
     </div>
