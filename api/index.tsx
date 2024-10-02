@@ -332,7 +332,7 @@ app.frame('/share', (c) => {
 function getBestMove(board: (string | null)[], player: string): number {
   const opponent = player === 'X' ? 'O' : 'X'
 
-  // If it's the first move (only one 'O' on the board), choose a random available position
+  // If it's the first mOve (only one 'O' on the board), choose a random available position
   if (board.filter(cell => cell !== null).length === 1) {
     const availableMoves = board.reduce((acc, cell, index) => {
       if (cell === null) acc.push(index)
