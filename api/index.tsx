@@ -337,7 +337,7 @@ function getBestMove(board: (string | null)[], player: string): number {
   const opponent = player === 'X' ? 'O' : 'X'
 
   // Randomly choose to make a suboptimal move (30% chance)
-  if (Math.random() < 0.3) {
+  if (Math.random() < 0.2) {
     const availableMoves = board.reduce((acc, cell, index) => {
       if (cell === null) acc.push(index)
       return acc
