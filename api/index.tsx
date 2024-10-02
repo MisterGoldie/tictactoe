@@ -234,7 +234,7 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
+        backgroundImage: 'url(https://bafybeif6knruive34r5sebbr5jcu6w65sast2hivnouqeid3dolyn76e3u.ipfs.w3s.link/Frame%2025%20(4).png)',
         backgroundSize: '1080px 1080px', // Fixed size matching the container
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat', // Prevent repeating
