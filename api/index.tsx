@@ -383,7 +383,7 @@ function getBestMove(board: (string | null)[], player: string): number {
     return availableSides[Math.floor(Math.random() * availableSides.length)]
   }
 
-  return -1 // No move available
+  return -1 // No move Available
 }
 
 
