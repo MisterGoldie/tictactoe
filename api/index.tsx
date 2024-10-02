@@ -1,3 +1,5 @@
+/** @jsxImportSource frog/jsx */
+
 import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
@@ -89,7 +91,6 @@ app.frame('/', async (c) => {
       username = await getUsername(fid.toString());
     } catch (error) {
       console.error('Error getting username:', error);
-      // Use default username 'Player' in case of error
     }
   }
 
@@ -102,7 +103,7 @@ app.frame('/', async (c) => {
   }
 
   let { board, currentPlayer, isGameOver } = state
-  let message = `Make a move!`  // This is the only line that changed
+  let message = `Make a move!`
 
   if (status === 'response' && buttonValue) {
     if (buttonValue === 'newgame') {
@@ -162,12 +163,18 @@ app.frame('/', async (c) => {
   const shuffledMoves = shuffleArray([...availableMoves]).slice(0, 4)
 
   const intents = isGameOver
-    ? [<Button value="newgame">New Game</Button>]
-    : shuffledMoves.map((index) => 
-        <Button value={`move:${encodedState}:${index}`}>
-          {COORDINATES[index]}
-        </Button>
-      )
+    ? [
+        <Button value="newgame">New Game</Button>,
+        <Button action="/share">Share Game</Button>
+      ]
+    : [
+        ...shuffledMoves.map((index) => 
+          <Button value={`move:${encodedState}:${index}`}>
+            {COORDINATES[index]}
+          </Button>
+        ),
+        <Button action="/share">Share Game</Button>
+      ]
 
   return c.res({
     image: (
@@ -190,6 +197,37 @@ app.frame('/', async (c) => {
     intents: intents,
   })
 })
+
+app.frame('/share', (c) => {
+  const shareText = `Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?`;
+  const shareUrl = `https://tictactoe-nine-xi.vercel.app/api`; // Replace with your actual domain
+
+  const farcasterShareURL = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(shareUrl)}`;
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundColor: 'white',
+        color: 'black',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        <h1>Share Tic-Tac-Toe</h1>
+        <p>Challenge your friends to a game!</p>
+      </div>
+    ),
+    intents: [
+      <Button action="/">New Game</Button>,
+      <Button.Link href={farcasterShareURL}>Share on Farcaster</Button.Link>,
+    ],
+  });
+});
 
 function getBestMove(board: (string | null)[], player: string): number {
   const opponent = player === 'X' ? 'O' : 'X'
