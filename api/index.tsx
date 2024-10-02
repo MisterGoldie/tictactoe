@@ -83,33 +83,153 @@ function shuffleArray<T>(array: T[]): T[] {
 
 // New initial route
 // Initial route
-app.frame('/', () => {
-  const gifUrl = 'https://bafybeidq2sujueacxrzx6v4ueciceegs6xommrgoranzqqmaio7k6hlzyy.ipfs.w3s.link/ezgif.com-animated-gif-maker%201.gif'
-  const baseUrl = 'https://tictactoe-nine-xi.vercel.app' // Update this to your actual domain
+app.frame('/', async (c) => {  // Mark the function as async
+  const { buttonValue, status, frameData } = c;
+  const fid = frameData?.fid;
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Tic-Tac-Toe Game</title>
-      <meta property="fc:frame" content="vNext">
-      <meta property="fc:frame:image" content="${gifUrl}">
-      <meta property="fc:frame:image:aspect_ratio" content="1:1">
-      <meta property="fc:frame:button:1" content="How to Play">
-      <meta property="fc:frame:button:1:action" content="post">
-      <meta property="fc:frame:post_url" content="${baseUrl}/api/howtoplay">
-    </head>
-    <body>
-    </body>
-    </html>
-  `
+  // Handle post_redirect action for sharing
+  if (buttonValue === 'post_redirect') {
+    return c.res({
+      image: (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '1080px',
+          height: '1080px',
+          backgroundImage: 'url(https://bafybeigp3dkqr7wqgvp7wmycpg6axhgmc42pljkzmhdbnrsnxehoieqeri.ipfs.w3s.link/Frame%209.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          color: 'white',
+          fontSize: '36px',
+          fontFamily: 'Arial, sans-serif',
+        }}>
+          <h1 style={{ marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>Tic-Tac-Toe Challenge!</h1>
+          <p style={{ textAlign: 'center', maxWidth: '800px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+            Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?
+          </p>
+          <p style={{ fontSize: '30px', marginTop: '20px', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>Tap to play!</p>
+        </div>
+      ),
+      intents: [
+        <Button action="/game">Start Game</Button>
+      ]
+    });
+  }
 
-  return new Response(html, {
-    headers: { 'Content-Type': 'text/html' },
-  })
-})
+  // Existing game logic
+  let username = 'Player';
+  if (fid) {
+    try {
+      username = await getUsername(fid.toString());
+    } catch (error) {
+      console.error('Error getting username:', error);
+    }
+  }
+
+  let state: GameState = { board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false };
+  let message = `New game started! Your turn, ${username}`;
+
+  if (status === 'response' && buttonValue && buttonValue.startsWith('move:')) {
+    state = decodeState(buttonValue.split(':')[1]);
+    let { board, currentPlayer, isGameOver } = state;
+
+    const move = parseInt(buttonValue.split(':')[2]);
+    if (board[move] === null && !isGameOver) {
+      // Player's move
+      board[move] = 'O';
+      message = `${username} moved at ${COORDINATES[move]}.`;
+      
+      if (checkWin(board)) {
+        message = `${username} wins! Game over.`;
+        isGameOver = true;
+      } else if (board.every((cell: string | null) => cell !== null)) {
+        message = "Game over! It's a draw.";
+        isGameOver = true;
+      } else {
+        // Computer's move
+        const computerMove = getBestMove(board, 'X');
+        if (computerMove !== -1) {
+          board[computerMove] = 'X';
+          message += ` Computer moved at ${COORDINATES[computerMove]}.`;
+          
+          if (checkWin(board)) {
+            message += ` Computer wins! Game over.`;
+            isGameOver = true;
+          } else if (board.every((cell: string | null) => cell !== null)) {
+            message += " It's a draw. Game over.";
+            isGameOver = true;
+          } else {
+            message += ` Your turn, ${username}.`;
+          }
+        }
+      }
+    } else if (isGameOver) {
+      message = "Game is over. Start a new game!";
+    } else {
+      message = "That spot is already taken! Choose another.";
+    }
+
+    state = { board, currentPlayer, isGameOver };
+  }
+
+  // Encode the state in the button values
+  const encodedState = encodeState(state);
+
+  // Get available moves
+  const availableMoves = state.board.reduce((acc, cell, index) => {
+    if (cell === null) acc.push(index);
+    return acc;
+  }, [] as number[]);
+
+  // Shuffle available moves and take the first 4 (or less if fewer are available)
+  const shuffledMoves = shuffleArray([...availableMoves]).slice(0, 4);
+
+  const intents = state.isGameOver
+    ? [
+        <Button action="/">New Game</Button>,
+        <Button action="/share">Share Game</Button>
+      ]
+    : shuffledMoves.map((index) => 
+        <Button value={`move:${encodedState}:${index}`}>
+          {COORDINATES[index]}
+        </Button>
+      );
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundImage: 'url(https://bafybeigp3dkqr7wqgvp7wmycpg6axhgmc42pljkzmhdbnrsnxehoieqeri.ipfs.w3s.link/Frame%209.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        color: 'white',
+        fontSize: '36px',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {renderBoard(state.board)}
+        <div style={{ 
+          marginTop: '40px', 
+          maxWidth: '900px', 
+          textAlign: 'center', 
+          backgroundColor: 'rgba(255, 255, 255, 0.7)', 
+          padding: '20px', 
+          borderRadius: '10px', 
+          color: 'black' 
+        }}>
+          {message}
+        </div>
+      </div>
+    ),
+    intents: intents,
+  });
+});
 
 // How to Play route
 app.frame('/howtoplay', () => {
@@ -318,7 +438,7 @@ app.frame('/share', (c) => {
     intents: [
       <Button action="/game">New Game</Button>,
       <Button action="post_redirect">Share on Farcaster</Button>
-    ],
+    ]
   });
 });
 
