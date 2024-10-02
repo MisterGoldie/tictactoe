@@ -274,11 +274,14 @@ function renderBoard(board: (string | null)[]) {
               <div key={index} style={{
                 width: '200px',
                 height: '200px',
-                border: '4px solid black',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '120px',
+                background: 'linear-gradient(135deg, #0F0F2F 0%, #303095 100%)',
+                border: '4px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
+                color: 'white',
               }}>
                 {board[index]}
               </div>
