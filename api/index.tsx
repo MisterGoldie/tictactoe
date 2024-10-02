@@ -299,6 +299,7 @@ function renderBoard(board: (string | null)[]) {
 
 app.frame('/share', (c) => {
   const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
+  const gifUrl = 'https://bafybeidq2sujueacxrzx6v4ueciceegs6xommrgoranzqqmaio7k6hlzyy.ipfs.w3s.link/ezgif.com-animated-gif-maker%201.gif'
 
   return c.res({
     image: (
@@ -309,7 +310,7 @@ app.frame('/share', (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeigp3dkqr7wqgvp7wmycpg6axhgmc42pljkzmhdbnrsnxehoieqeri.ipfs.w3s.link/Frame%209.png)',
+        backgroundImage: `url(${gifUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
@@ -317,14 +318,13 @@ app.frame('/share', (c) => {
         fontFamily: 'Arial, sans-serif',
         textAlign: 'center',
       }}>
-        <h1 style={{ marginBottom: '20px' }}>Thanks for Playing!</h1>
+        <h1 style={{ marginBottom: '20px' }}>Tic-Tac-Toe Challenge!</h1>
         <p>{shareText}</p>
         <p style={{ fontSize: '30px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
       </div>
     ),
     intents: [
-      <Button action="post_redirect">Share Game</Button>,
-      <Button action="/">Play Again</Button>
+      <Button action="/">Play Game</Button>
     ],
   });
 });
