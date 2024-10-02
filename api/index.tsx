@@ -320,7 +320,7 @@ app.frame('/share', (c) => {
       }}>
         <h1 style={{ marginBottom: '20px' }}>Tic-Tac-Toe Challenge!</h1>
         <p>{shareText}</p>
-        <p style={{ fontSize: '36px', marginTop: '20px' }}>Tap to play!</p>
+        <p style={{ fontSize: '36px', marginTop: '20px' }}>Start New Game or Share!</p>
       </div>
     ),
     intents: [
