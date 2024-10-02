@@ -234,13 +234,15 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundColor: 'white',
+        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
         color: 'black',
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
       }}>
         {renderBoard(state.board)}
-        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center' }}>{message}</div>
+        <div style={{ marginTop: '40px', maxWidth: '900px', textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.7)', padding: '20px', borderRadius: '10px' }}>{message}</div>
       </div>
     ),
     intents: intents,
