@@ -298,7 +298,7 @@ function renderBoard(board: (string | null)[]) {
 
 
 app.frame('/share', (c) => {
-  const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
+  const shareText = 'Share or Play Again 🎮';
   const baseUrl = 'https://podplay.vercel.app'; // Update this to your actual domain
   const originalFramesLink = `${baseUrl}/api`;
   
@@ -322,13 +322,13 @@ app.frame('/share', (c) => {
         fontFamily: 'Arial, sans-serif',
         textAlign: 'center',
       }}>
-        <h1 style={{ marginBottom: '20px' }}>Share Tic-Tac-Toe!</h1>
+        <h1 style={{ marginBottom: '20px' }}>Thanks for Playing!</h1>
         <p>{shareText}</p>
         <p style={{ fontSize: '30px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
       </div>
     ),
     intents: [
-      <Button.Link href={farcasterShareURL}>Share on Farcaster</Button.Link>,
+      <Button.Link href={farcasterShareURL}>Share</Button.Link>,
       <Button action="/">Play Again</Button>
     ],
   });
