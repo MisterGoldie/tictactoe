@@ -327,8 +327,8 @@ app.frame('/share', (c) => {
       </div>
     ),
     intents: [
-      <Button.Link href={farcasterShareURL}>Share</Button.Link>,
-      <Button action="/">Play Again</Button>
+      <Button action="/">Play Again</Button>,
+      <Button.Link href={farcasterShareURL}>Share</Button.Link>
     ],
   });
 });
