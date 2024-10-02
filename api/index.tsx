@@ -298,7 +298,7 @@ function renderBoard(board: (string | null)[]) {
 
 
 app.frame('/share', (c) => {
-  const shareText = 'Play Some Tic-Tac-Toe! 🎮 Can you beat the AI?';
+  const shareText = 'Start New Game or Share';
   // Removed the unused baseUrl variable
 
   return c.res({
@@ -318,7 +318,7 @@ app.frame('/share', (c) => {
         fontFamily: 'Arial, sans-serif',
         textAlign: 'center',
       }}>
-        <h1 style={{ marginBottom: '20px' }}>Tic-Tac-Toe Challenge!</h1>
+        <h1 style={{ marginBottom: '20px' }}>Thanks for Playing!</h1>
         <p>{shareText}</p>
         <p style={{ fontSize: '30px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
       </div>
