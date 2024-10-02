@@ -234,7 +234,7 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
+        backgroundImage: 'url(https://bafybeidxbdp6rn3vtfe2ueqwdcxfyroct557mqmjpqe5sinebve3ga2dnm.ipfs.w3s.link/Frame%2025%20(3).png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
@@ -261,10 +261,8 @@ app.frame('/game', async (c) => {
 
 
 app.frame('/share', (c) => {
-  const shareText = `Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?`;
-  const shareUrl = `https://tictactoe-nine-xi.vercel.app/api`;
-
-  const farcasterShareURL = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(shareUrl)}`;
+  const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
+  const baseUrl = 'https://tictactoe-nine-xi.vercel.app'; // Update this to your actual domain
 
   return c.res({
     image: (
@@ -275,18 +273,21 @@ app.frame('/share', (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundColor: 'white',
-        color: 'black',
-        fontSize: '36px',
+        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        color: 'white',
+        fontSize: '48px',
         fontFamily: 'Arial, sans-serif',
+        textAlign: 'center',
       }}>
-        <h1>Share Tic-Tac-Toe</h1>
-        <p>Challenge your friends to a game!</p>
+        <h1 style={{ marginBottom: '20px' }}>Tic-Tac-Toe Challenge!</h1>
+        <p>{shareText}</p>
+        <p style={{ fontSize: '36px', marginTop: '20px' }}>Tap to play!</p>
       </div>
     ),
     intents: [
-      <Button action="/">New Game</Button>,
-      <Button.Link href={farcasterShareURL}>Share on Farcaster</Button.Link>,
+      <Button action={`${baseUrl}/api/game`}>Start New Game</Button>
     ],
   });
 });
