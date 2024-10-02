@@ -100,6 +100,13 @@ app.frame('/', () => {
       <meta property="fc:frame:button:1" content="How to Play">
       <meta property="fc:frame:button:1:action" content="post">
       <meta property="fc:frame:post_url" content="${baseUrl}/api/howtoplay">
+      
+      <!-- Added Open Graph tags -->
+      <meta property="og:title" content="Tic-Tac-Toe Challenge">
+      <meta property="og:description" content="Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?">
+      <meta property="og:image" content="${gifUrl}">
+      <meta property="og:url" content="${baseUrl}/api">
+      <meta property="og:type" content="website">
     </head>
     <body>
     </body>
@@ -294,7 +301,7 @@ function renderBoard(board: (string | null)[]) {
 
 app.frame('/share', (c) => {
   const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
-  const baseUrl = 'https://tictactoe-nine-xi.vercel.app'; // Update this to your actual domain
+  // Removed the unused baseUrl variable
 
   return c.res({
     image: (
@@ -319,7 +326,8 @@ app.frame('/share', (c) => {
       </div>
     ),
     intents: [
-      <Button action={`${baseUrl}/api/game`}>Start New Game</Button>
+      <Button action="post_redirect">Share Game</Button>,
+      <Button action="/game">Start New Game</Button>
     ],
   });
 });
