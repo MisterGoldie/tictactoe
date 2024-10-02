@@ -84,7 +84,7 @@ function shuffleArray<T>(array: T[]): T[] {
 // Initial route
 app.frame('/', () => {
   const gifUrl = 'https://bafybeidq2sujueacxrzx6v4ueciceegs6xommrgoranzqqmaio7k6hlzyy.ipfs.w3s.link/ezgif.com-animated-gif-maker%201.gif'
-  const baseUrl = 'https://tictactoe-nine-xi.vercel.app' // Update this to your actual domain
+  const baseUrl = 'https://podplay.vercel.app' // Update this to your actual domain
 
   const html = `
     <!DOCTYPE html>
@@ -120,7 +120,7 @@ app.frame('/', () => {
 // How to Play route
 app.frame('/howtoplay', () => {
   const imageUrl = 'https://bafybeicdi2lqybih2runenxrrxrxrfi3nrvr4aci5evlp2ks4rses5m3py.ipfs.w3s.link/HowToPlay.png'
-  const baseUrl = 'https://tictactoe-nine-xi.vercel.app' // Update this to your actual domain
+  const baseUrl = 'https://podplay.vercel.app' // Update this to your actual domain
 
   const html = `
     <!DOCTYPE html>
