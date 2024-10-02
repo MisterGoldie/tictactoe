@@ -113,7 +113,7 @@ app.frame('/', () => {
 
 // How to Play route
 app.frame('/howtoplay', () => {
-  const imageUrl = 'https://bafybeifwuw27w75jpvmfjhxci7mhhlkhqzqzz3ym6feeadqtphbb6pbpwm.ipfs.w3s.link/Frame%208.png'
+  const imageUrl = 'https://bafybeicdi2lqybih2runenxrrxrxrfi3nrvr4aci5evlp2ks4rses5m3py.ipfs.w3s.link/HowToPlay.png'
   const baseUrl = 'https://tictactoe-nine-xi.vercel.app' // Update this to your actual domain
 
   const html = `
