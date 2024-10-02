@@ -293,41 +293,6 @@ function renderBoard(board: (string | null)[]) {
 
 app.frame('/share', (c) => {
   const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
-  const baseUrl = 'https://tictactoe-nine-xi.vercel.app'; // Update this to your actual domain
-
-  return c.res({
-    image: (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '1080px',
-        height: '1080px',
-        backgroundImage: 'url(https://bafybeigp3dkqr7wqgvp7wmycpg6axhgmc42pljkzmhdbnrsnxehoieqeri.ipfs.w3s.link/Frame%209.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        color: 'white',
-        fontSize: '36px',
-        fontFamily: 'Arial, sans-serif',
-      }}>
-        <h1 style={{ marginBottom: '20px' }}>Tic-Tac-Toe Challenge!</h1>
-        <p>{shareText}</p>
-        <p style={{ fontSize: '36px', marginTop: '20px' }}>Tap to play!</p>
-      </div>
-    ),
-    intents: [
-      <Button action={`${baseUrl}/api/game`}>Start New Game</Button>
-    ],
-  });
-});
-
-
-app.frame('/share', (c) => {
-  const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
-  const baseUrl = 'https://tictactoe-nine-xi.vercel.app'; // Update this to your actual domain
-
-  const farcasterShareURL = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(baseUrl + '/api')}`;
 
   return c.res({
     image: (
@@ -352,7 +317,7 @@ app.frame('/share', (c) => {
     ),
     intents: [
       <Button action="/game">New Game</Button>,
-      <Button.Link href={farcasterShareURL}>Share on Farcaster</Button.Link>
+      <Button action="post_redirect">Share on Farcaster</Button>
     ],
   });
 });
