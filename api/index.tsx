@@ -101,8 +101,8 @@ app.frame('/', () => {
       <meta property="fc:frame:post_url" content="${baseUrl}/api/howtoplay">
       
       <!-- Added Open Graph tags -->
-      <meta property="og:title" content="Tic-Tac-Toe Challenge">
-      <meta property="og:description" content="Play Tic-Tac-Toe! 🎮 Can you beat the AI?">
+      <meta property="og:title" content="Thanks for Playing!">
+      <meta property="og:description" content="Start New Game or Share!">
       <meta property="og:image" content="${gifUrl}">
       <meta property="og:url" content="${baseUrl}/api">
       <meta property="og:type" content="website">
@@ -320,7 +320,7 @@ app.frame('/share', (c) => {
       }}>
         <h1 style={{ marginBottom: '20px' }}>Tic-Tac-Toe Challenge!</h1>
         <p>{shareText}</p>
-        <p style={{ fontSize: '36px', marginTop: '20px' }}>Start New Game or Share!</p>
+        <p style={{ fontSize: '30px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
       </div>
     ),
     intents: [
