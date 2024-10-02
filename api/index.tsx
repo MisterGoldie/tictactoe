@@ -234,7 +234,7 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeigp3dkqr7wqgvp7wmycpg6axhgmc42pljkzmhdbnrsnxehoieqeri.ipfs.w3s.link/Frame%209.png)',
+        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
@@ -279,9 +279,7 @@ function renderBoard(board: (string | null)[]) {
                 justifyContent: 'center',
                 fontSize: '120px',
                 background: 'linear-gradient(135deg, #0F0F2F 0%, #303095 100%)',
-                border: '4px solid rgba(255, 255, 255, 0.3)',
-                boxShadow: '0 0 10px rgba(0, 0, 0, 0.5)',
-                color: 'white',
+                border: '4px solid black',
               }}>
                 {board[index]}
               </div>
