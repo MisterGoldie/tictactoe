@@ -81,7 +81,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-// New initial route
 // Initial route
 app.frame('/', () => {
   const gifUrl = 'https://bafybeidq2sujueacxrzx6v4ueciceegs6xommrgoranzqqmaio7k6hlzyy.ipfs.w3s.link/ezgif.com-animated-gif-maker%201.gif'
@@ -103,7 +102,7 @@ app.frame('/', () => {
       
       <!-- Added Open Graph tags -->
       <meta property="og:title" content="Tic-Tac-Toe Challenge">
-      <meta property="og:description" content="Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?">
+      <meta property="og:description" content="Play Tic-Tac-Toe! 🎮 Can you beat the AI?">
       <meta property="og:image" content="${gifUrl}">
       <meta property="og:url" content="${baseUrl}/api">
       <meta property="og:type" content="website">
@@ -148,7 +147,6 @@ app.frame('/howtoplay', () => {
 })
 
 
-// Existing game logic moved to /game route
 app.frame('/game', async (c) => {
   const { buttonValue, status, frameData } = c
   const fid = frameData?.fid;
@@ -368,7 +366,7 @@ function getBestMove(board: (string | null)[], player: string): number {
     }
   }
 
-  // Choose center if available
+  // Choose center if Available
   if (board[4] === null) return 4
 
   // Choose corners
