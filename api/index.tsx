@@ -298,7 +298,7 @@ function renderBoard(board: (string | null)[]) {
 
 
 app.frame('/share', (c) => {
-  const shareText = 'Share or Play Again 🎮';
+  const shareText = 'Welcome to Pod Play presented by /thepod 🎮. Think you can win a game of Tic-Tac-Toe?';
   const baseUrl = 'https://podplay.vercel.app'; // Update this to your actual domain
   const originalFramesLink = `${baseUrl}/api`;
   
