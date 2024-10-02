@@ -81,7 +81,36 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-app.frame('/', async (c) => {
+// New initial route
+app.frame('/', () => {
+  const gifUrl = 'https://bafybeidq2sujueacxrzx6v4ueciceegs6xommrgoranzqqmaio7k6hlzyy.ipfs.w3s.link/ezgif.com-animated-gif-maker%201.gif'
+  const baseUrl = 'https://tictactoe-nine-xi.vercel.app' // Update this to your actual domain
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Tic-Tac-Toe Game</title>
+      <meta property="fc:frame" content="vNext">
+      <meta property="fc:frame:image" content="${gifUrl}">
+      <meta property="fc:frame:button:1" content="Start Game">
+      <meta property="fc:frame:button:1:action" content="post">
+      <meta property="fc:frame:post_url" content="${baseUrl}/api/game">
+    </head>
+    <body>
+    </body>
+    </html>
+  `
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html' },
+  })
+})
+
+// Existing game logic moved to /game route
+app.frame('/game', async (c) => {
   const { buttonValue, status, frameData } = c
   const fid = frameData?.fid;
 
@@ -288,41 +317,22 @@ function renderBoard(board: (string | null)[]) {
       display: 'flex',
       flexDirection: 'column',
       gap: '20px',
-      width: '600px',  // Set a fixed width for the board
-      height: '600px', // Set a fixed height for the board
     }}>
       {[0, 1, 2].map(row => (
-        <div key={row} style={{ display: 'flex', gap: '20px', flex: 1 }}>
+        <div key={row} style={{ display: 'flex', gap: '20px' }}>
           {[0, 1, 2].map(col => {
             const index = row * 3 + col;
             return (
               <div key={index} style={{
-                width: '33.33%',
-                height: '100%',
+                width: '200px',
+                height: '200px',
+                border: '4px solid black',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '120px',
-                position: 'relative', // Add this for pseudo-element positioning
               }}>
                 {board[index]}
-                {/* Add pseudo-elements for grid lines */}
-                {col < 2 && <div style={{
-                  position: 'absolute',
-                  right: '-10px',
-                  top: '10%',
-                  bottom: '10%',
-                  width: '2px',
-                  backgroundColor: 'black',
-                }} />}
-                {row < 2 && <div style={{
-                  position: 'absolute',
-                  bottom: '-10px',
-                  left: '10%',
-                  right: '10%',
-                  height: '2px',
-                  backgroundColor: 'black',
-                }} />}
               </div>
             );
           })}
