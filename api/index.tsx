@@ -298,7 +298,7 @@ function renderBoard(board: (string | null)[]) {
 
 
 app.frame('/share', (c) => {
-  const shareText = 'Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?';
+  const shareText = 'Play Some Tic-Tac-Toe! 🎮 Can you beat the AI?';
   // Removed the unused baseUrl variable
 
   return c.res({
