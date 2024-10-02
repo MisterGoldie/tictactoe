@@ -159,8 +159,8 @@ app.frame('/', async (c) => {
     return acc
   }, [] as number[])
 
-  // Shuffle available moves and take the first 3 (or less if fewer are available)
-  const shuffledMoves = shuffleArray([...availableMoves]).slice(0, 3)
+  // Shuffle available moves and take the first 4 (or less if fewer are available)
+  const shuffledMoves = shuffleArray([...availableMoves]).slice(0, 4)
 
   const intents = isGameOver
     ? [
@@ -196,7 +196,7 @@ app.frame('/', async (c) => {
 })
 
 app.frame('/share', (c) => {
-  const shareText = `I just played Tic-Tac-Toe! 🎮 Can you beat the AI?`;
+  const shareText = `Play Tic-Tac-Toe with me! 🎮 Can you beat the AI?`;
   const shareUrl = `https://tictactoe-nine-xi.vercel.app/api`;
 
   const farcasterShareURL = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(shareUrl)}`;
