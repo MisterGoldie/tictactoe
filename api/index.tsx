@@ -234,9 +234,10 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeidxbdp6rn3vtfe2ueqwdcxfyroct557mqmjpqe5sinebve3ga2dnm.ipfs.w3s.link/Frame%2025%20(3).png)',
-        backgroundSize: 'cover',
+        backgroundImage: 'url(https://bafybeibgu3lk4dqd5bbv6ictk7ytfwvybsxoksagrc3siklgkdij7zqjq4.ipfs.w3s.link/Frame%2010.png)',
+        backgroundSize: '1080px 1080px', // Fixed size matching the container
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat', // Prevent repeating
         color: 'white',
         fontSize: '36px',
         fontFamily: 'Arial, sans-serif',
@@ -258,6 +259,37 @@ app.frame('/game', async (c) => {
     intents: intents,
   })
 })
+
+function renderBoard(board: (string | null)[]) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '20px',
+    }}>
+      {[0, 1, 2].map(row => (
+        <div key={row} style={{ display: 'flex', gap: '20px' }}>
+          {[0, 1, 2].map(col => {
+            const index = row * 3 + col;
+            return (
+              <div key={index} style={{
+                width: '200px',
+                height: '200px',
+                border: '4px solid black',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '120px',
+              }}>
+                {board[index]}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 
 app.frame('/share', (c) => {
@@ -348,36 +380,6 @@ function getBestMove(board: (string | null)[], player: string): number {
   return -1 // No move available
 }
 
-function renderBoard(board: (string | null)[]) {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px',
-    }}>
-      {[0, 1, 2].map(row => (
-        <div key={row} style={{ display: 'flex', gap: '20px' }}>
-          {[0, 1, 2].map(col => {
-            const index = row * 3 + col;
-            return (
-              <div key={index} style={{
-                width: '200px',
-                height: '200px',
-                border: '4px solid black',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '120px',
-              }}>
-                {board[index]}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function checkWin(board: (string | null)[]) {
   const winPatterns = [
