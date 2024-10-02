@@ -336,7 +336,16 @@ app.frame('/share', (c) => {
 function getBestMove(board: (string | null)[], player: string): number {
   const opponent = player === 'X' ? 'O' : 'X'
 
-  // If it's the first mOve (only one 'O' on the board), choose a random available position
+  // Randomly choose to make a suboptimal move (30% chance)
+  if (Math.random() < 0.3) {
+    const availableMoves = board.reduce((acc, cell, index) => {
+      if (cell === null) acc.push(index)
+      return acc
+    }, [] as number[])
+    return availableMoves[Math.floor(Math.random() * availableMoves.length)]
+  }
+
+  // If it's the first move (only one 'O' on the board), choose a random available position
   if (board.filter(cell => cell !== null).length === 1) {
     const availableMoves = board.reduce((acc, cell, index) => {
       if (cell === null) acc.push(index)
@@ -369,26 +378,16 @@ function getBestMove(board: (string | null)[], player: string): number {
     }
   }
 
-  // Choose center if Available
-  if (board[4] === null) return 4
+  // Choose center if available (70% chance)
+  if (board[4] === null && Math.random() < 0.7) return 4
 
-  // Choose corners
-  const corners = [0, 2, 6, 8]
-  const availableCorners = corners.filter(i => board[i] === null)
-  if (availableCorners.length > 0) {
-    return availableCorners[Math.floor(Math.random() * availableCorners.length)]
-  }
-
-  // Choose any available side
-  const sides = [1, 3, 5, 7]
-  const availableSides = sides.filter(i => board[i] === null)
-  if (availableSides.length > 0) {
-    return availableSides[Math.floor(Math.random() * availableSides.length)]
-  }
-
-  return -1 // No move Available
+  // Choose corners or sides randomly
+  const availableMoves = board.reduce((acc, cell, index) => {
+    if (cell === null) acc.push(index)
+    return acc
+  }, [] as number[])
+  return availableMoves[Math.floor(Math.random() * availableMoves.length)]
 }
-
 
 function checkWin(board: (string | null)[]) {
   const winPatterns = [
