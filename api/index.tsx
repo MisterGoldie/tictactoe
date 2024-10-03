@@ -119,7 +119,7 @@ app.frame('/', () => {
 
 // How to Play route
 app.frame('/howtoplay', () => {
-  const imageUrl = 'https://bafybeicdi2lqybih2runenxrrxrxrfi3nrvr4aci5evlp2ks4rses5m3py.ipfs.w3s.link/HowToPlay.png'
+  const imageUrl = 'https://bafybeifzk7uojcicnh6yhnqvoldkpzuf32sullm34ela266xthbidca6ny.ipfs.w3s.link/HowToPlay%20(1).png'
   const baseUrl = 'https://podplay.vercel.app' // Update this to your actual domain
 
   const html = `
