@@ -146,7 +146,6 @@ app.frame('/howtoplay', () => {
   })
 })
 
-
 app.frame('/game', async (c) => {
   const { buttonValue, status, frameData } = c
   const fid = frameData?.fid;
@@ -163,6 +162,7 @@ app.frame('/game', async (c) => {
   // Always initialize a new game state when entering this route
   let state: GameState = { board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false }
   let message = `New game started! Your turn, ${username}`
+  let userStats = { wins: 0, losses: 0 };
 
   if (status === 'response' && buttonValue && buttonValue.startsWith('move:')) {
     state = decodeState(buttonValue.split(':')[1])
@@ -177,6 +177,9 @@ app.frame('/game', async (c) => {
       if (checkWin(board)) {
         message = `${username} wins! Game over.`
         isGameOver = true
+        if (fid) {
+          await recordGameOutcome(fid.toString(), 'win');
+        }
       } else if (board.every((cell: string | null) => cell !== null)) {
         message = "Game over! It's a draw."
         isGameOver = true
@@ -190,6 +193,9 @@ app.frame('/game', async (c) => {
           if (checkWin(board)) {
             message += ` Computer wins! Game over.`
             isGameOver = true
+            if (fid) {
+              await recordGameOutcome(fid.toString(), 'loss');
+            }
           } else if (board.every((cell: string | null) => cell !== null)) {
             message += " It's a draw. Game over."
             isGameOver = true
@@ -205,6 +211,12 @@ app.frame('/game', async (c) => {
     }
 
     state = { board, currentPlayer, isGameOver }
+  }
+
+  // Fetch user stats if the game is over
+  if (state.isGameOver && fid) {
+    userStats = await getUserStats(fid.toString());
+    message += ` Your 30-day record: ${userStats.wins} wins, ${userStats.losses} losses.`
   }
 
   // Encode the state in the button values
@@ -296,7 +308,6 @@ function renderBoard(board: (string | null)[]) {
   )
 }
 
-
 app.frame('/share', (c) => {
   const shareText = 'Welcome to POD Play presented by /thepod 🕹️. Think you can win a game of Tic-Tac-Toe? Frame by @goldie & @themrsazon';
   const baseUrl = 'https://podplay.vercel.app'; // Update this to your actual domain
@@ -336,7 +347,7 @@ app.frame('/share', (c) => {
 function getBestMove(board: (string | null)[], player: string): number {
   const opponent = player === 'X' ? 'O' : 'X'
 
-  // Randomly choose to make a suboptimal move (30% chance)
+  // Randomly choose to make a suboptimal move (20% chance)
   if (Math.random() < 0.2) {
     const availableMoves = board.reduce((acc, cell, index) => {
       if (cell === null) acc.push(index)
@@ -409,6 +420,32 @@ function encodeState(state: GameState): string {
 
 function decodeState(encodedState: string): GameState {
   return JSON.parse(Buffer.from(encodedState, 'base64').toString())
+}
+
+// New functions for recording game outcomes and fetching user stats
+async function recordGameOutcome(fid: string, outcome: 'win' | 'loss') {
+  // TODO: Implement this function to record the game outcome in your database
+  console.log(`Recording ${outcome} for FID: ${fid}`);
+  // Example implementation (replace with actual database call):
+  // await database.insert({ fid, outcome, timestamp: new Date() });
+}
+
+async function getUserStats(fid: string): Promise<{ wins: number, losses: number }> {
+  // TODO: Implement this function to fetch user stats from your database
+  console.log(`Fetching stats for FID: ${fid}`);
+  // Example implementation (replace with actual database query):
+  // const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // const stats = await database.query(`
+  //   SELECT 
+  //     COUNT(*) FILTER (WHERE outcome = 'win') as wins,
+  //     COUNT(*) FILTER (WHERE outcome = 'loss') as losses
+  //   FROM game_outcomes
+  //   WHERE fid = $1 AND timestamp > $2
+  // `, [fid, thirtyDaysAgo]);
+  // return stats;
+  
+  // Placeholder return:
+  return { wins: 0, losses: 0 };
 }
 
 export const GET = handle(app)
