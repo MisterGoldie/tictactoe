@@ -83,7 +83,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 // Initial route
 app.frame('/', () => {
-  const gifUrl = 'https://bafybeidq2sujueacxrzx6v4ueciceegs6xommrgoranzqqmaio7k6hlzyy.ipfs.w3s.link/ezgif.com-animated-gif-maker%201.gif'
+  const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif'
   const baseUrl = 'https://podplay.vercel.app' // Update this to your actual domain
 
   const html = `
@@ -239,7 +239,7 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeidm3dsyrw4vwuctoywrrxwhwekjurmebugmdbblkhjsbccvauv7ma.ipfs.w3s.link/Frame%209.png)',
+        backgroundImage: 'url(https://bafybeiddxtdntzltw5xzc2zvqtotweyrgbeq7t5zvdduhi6nnb7viesov4.ipfs.w3s.link/Frame%2025%20(5).png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
