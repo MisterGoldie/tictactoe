@@ -518,13 +518,14 @@ app.frame('/', async (c) => {
     image: (
       <div style={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
         backgroundImage: `url(${gifUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        paddingBottom: '100px'
       }}>
         <div style={{
           display: 'flex',
