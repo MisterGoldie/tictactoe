@@ -228,7 +228,7 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Use it in getOwnedFanTokenss
+// Use it in getOwnedFanTokens
 async function getOwnedFanTokens(addresses: string[]): Promise<TokenHolding[] | null> {
   const graphQLClient = new GraphQLClient(MOXIE_API_URL)
   const query = gql`
@@ -506,7 +506,7 @@ async function getTotalPlayers(): Promise<number> {
   }
 }
 
-// Update the initial routes
+// Update the initial route
 app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   
