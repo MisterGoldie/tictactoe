@@ -224,9 +224,6 @@ async function getVestingContractAddress(beneficiaryAddresses: string[]): Promis
 }
 
 // Add delay between API calls
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 // Use it in getOwnedFanTokens
 async function getOwnedFanTokens(addresses: string[]): Promise<TokenHolding[] | null> {
@@ -472,28 +469,6 @@ async function updateUserRecord(fid: string, isWin: boolean, difficulty: 'easy' 
 }
 
 // Function to get recent players with their profile images
-async function getRecentPlayers(limit: number = 8): Promise<Array<{fid: string, profileImage: string | null}>> {
-  try {
-    const database = getDb();
-    const usersSnapshot = await database.collection('users')
-      .orderBy('timestamp', 'desc')
-      .limit(limit)
-      .get();
-
-    const playerPromises = usersSnapshot.docs.map(async (doc) => {
-      const fid = doc.id;
-      // Fetch profile image directly from Airstack instead of using stored data
-      const profileImage = await getUserProfilePicture(fid);
-      return { fid, profileImage };
-    });
-
-    const players = await Promise.all(playerPromises);
-    return players.filter(player => player.profileImage !== null);
-  } catch (error) {
-    console.error('Error getting recent players:', error);
-    return [];
-  }
-}
 
 async function getTotalPlayers(): Promise<number> {
   try {
@@ -1086,14 +1061,11 @@ app.frame('/share', async (c) => {
   console.log('Entering /share route');
   const { frameData } = c;
   const fid = frameData?.fid;
-  const result = c.req.query('result');
-  const state = c.req.query('state');
 
   let profileImage: string | null = null;
   let userRecord = { wins: 0, losses: 0, ties: 0 };
   let totalGamesPlayed = 0;
   let podScore = 0;
-  let ownsThepodToken = false;
   let thepodTokenBalance = 0;
   let username = 'Player';
 
@@ -1110,7 +1082,6 @@ app.frame('/share', async (c) => {
       profileImage = profileImageResult;
       userRecord = userRecordResult;
       totalGamesPlayed = totalGamesResult;
-      ownsThepodToken = fanTokenResult.ownsToken;
       thepodTokenBalance = fanTokenResult.balance;
       username = usernameResult;
       podScore = calculatePODScore(userRecord.wins, userRecord.ties, userRecord.losses, totalGamesPlayed, thepodTokenBalance);
