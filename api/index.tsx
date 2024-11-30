@@ -501,8 +501,7 @@ async function getTotalPlayers(): Promise<number> {
 // Update the initial route
 app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
-  const baseUrl = 'https://podplay.vercel.app';
-
+  
   const recentPlayers = await getRecentPlayers();
   const totalPlayers = await getTotalPlayers();
 
@@ -515,7 +514,6 @@ app.frame('/', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        position: 'relative',
         backgroundImage: `url(${gifUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -524,33 +522,34 @@ app.frame('/', async (c) => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          background: 'white',
           padding: '20px',
-          background: 'rgba(255, 255, 255, 0.95)',
           borderRadius: '15px',
-          gap: '10px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center'
+          {recentPlayers.map((player, i) => (
+            player.profileImage && (
+              <img 
+                key={player.fid}
+                src={player.profileImage} 
+                alt=""
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  border: '2px solid white',
+                  marginLeft: i === 0 ? '0px' : '-10px',
+                  zIndex: recentPlayers.length - i,
+                }}
+              />
+            )
+          ))}
+          <p style={{ 
+            fontSize: '24px', 
+            color: '#666',
+            marginTop: '10px',
           }}>
-            {recentPlayers.map((player, i) => (
-              <div key={player.fid} style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                border: '2px solid white',
-                marginLeft: i === 0 ? '0' : '-10px',
-                overflow: 'hidden',
-                backgroundColor: '#303095',
-                zIndex: recentPlayers.length - i
-              }}>
-                {player.profileImage && <img src={player.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: '24px', color: '#666' }}>
             +{totalPlayers} players have enjoyed the game
-          </div>
+          </p>
         </div>
       </div>
     ),
