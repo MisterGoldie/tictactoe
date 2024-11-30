@@ -511,13 +511,17 @@ app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   const baseUrl = 'https://podplay.vercel.app';
 
+  // Get total players
   const totalPlayers = await getTotalPlayers();
   
   // Get both profile images
   const [profileImage1, profileImage2] = await Promise.all([
-    getUserProfilePicture('7472'),  // your FID
-    getUserProfilePicture('14871')  // Jarrod's FID
+    getUserProfilePicture('7472'),
+    getUserProfilePicture('14871')
   ]);
+
+  // Display totalPlayers + 2 to include the hardcoded FIDs
+  const displayTotal = totalPlayers + 2;
 
   return c.res({
     image: (
@@ -572,7 +576,7 @@ app.frame('/', async (c) => {
             fontSize: '24px', 
             color: '#666'
           }}>
-            +{totalPlayers} players have enjoyed the game
+            +{displayTotal} players have enjoyed the game
           </span>
         </div>
       </div>
