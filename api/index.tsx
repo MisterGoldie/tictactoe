@@ -509,15 +509,16 @@ async function getTotalPlayers(): Promise<number> {
 // Update the initial route
 app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
-  
-  const recentPlayers = await getRecentPlayers();
+  const baseUrl = 'https://podplay.vercel.app';
+
+  // Get recent players and total count
+  const recentPlayers = await getRecentPlayers(8);
   const totalPlayers = await getTotalPlayers();
 
   return c.res({
     image: (
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         width: '1080px',
@@ -531,33 +532,33 @@ app.frame('/', async (c) => {
           flexDirection: 'column',
           alignItems: 'center',
           background: 'white',
-          padding: '20px',
-          borderRadius: '15px',
+          padding: '15px 25px',
+          borderRadius: '12px',
+          gap: '10px'
         }}>
-          {recentPlayers.map((player, i) => (
-            player.profileImage && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            {recentPlayers.map((player, i) => (
               <img 
                 key={player.fid}
-                src={player.profileImage} 
+                src={player.profileImage || ''}
                 alt=""
                 style={{
-                  width: '40px',
-                  height: '40px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
                   border: '2px solid white',
-                  marginLeft: i === 0 ? '0px' : '-10px',
-                  zIndex: recentPlayers.length - i,
+                  marginLeft: i === 0 ? '0' : '-8px',
+                  zIndex: recentPlayers.length - i
                 }}
               />
-            )
-          ))}
-          <p style={{ 
-            fontSize: '24px', 
-            color: '#666',
-            marginTop: '10px',
-          }}>
+            ))}
+          </div>
+          <div style={{ fontSize: '24px', color: '#666' }}>
             +{totalPlayers} players have enjoyed the game
-          </p>
+          </div>
         </div>
       </div>
     ),
