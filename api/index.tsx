@@ -480,13 +480,15 @@ async function getRecentPlayers(limit: number = 8): Promise<Array<{fid: string, 
       .limit(limit)
       .get();
 
-    return usersSnapshot.docs.map(doc => {
-      const userData = doc.data();
-      return {
-        fid: doc.id,
-        profileImage: userData.profileImage || null
-      };
+    const playerPromises = usersSnapshot.docs.map(async (doc) => {
+      const fid = doc.id;
+      // Fetch profile image directly from Airstack instead of using stored data
+      const profileImage = await getUserProfilePicture(fid);
+      return { fid, profileImage };
     });
+
+    const players = await Promise.all(playerPromises);
+    return players.filter(player => player.profileImage !== null);
   } catch (error) {
     console.error('Error getting recent players:', error);
     return [];
