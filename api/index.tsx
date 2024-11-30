@@ -520,8 +520,8 @@ app.frame('/', async (c) => {
     getUserProfilePicture('14871')
   ]);
 
-  // Display totalPlayers + 2 to include the hardcoded FIDs
-  const displayTotal = totalPlayers + 2;
+  // Subtract 2 from totalPlayers since we're showing those two separately
+  const displayTotal = totalPlayers - 2;
 
   return c.res({
     image: (
