@@ -17,6 +17,8 @@
     "express": "^4.21.0",
     "firebase-admin": "^12.6.0",
     "frog": "^0.17.3",
+    "graphql": "^16.9.0",
+    "graphql-request": "^7.1.2",
     "hono": "^4"
   },
   "devDependencies": {

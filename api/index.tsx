@@ -5,11 +5,17 @@ import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
 import { NeynarVariables } from 'frog/middlewares'
 import admin from 'firebase-admin';
+import { gql, GraphQLClient } from "graphql-request";
 
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql';
 const AIRSTACK_API_KEY = process.env.AIRSTACK_API_KEY as string;
 const AIRSTACK_API_KEY_SECONDARY = process.env.AIRSTACK_API_KEY_SECONDARY as string;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY as string;
+const MOXIE_VESTING_API_URL = "https://api.studio.thegraph.com/query/23537/moxie_vesting_mainnet/version/latest";
+const MOXIE_API_URL = "https://api.studio.thegraph.com/query/23537/moxie_protocol_stats_mainnet/version/latest";
+const WIN_GIF_URL = 'https://bafybeie6qqm6r24chds5smesevkrdsg3jqmgw5wdmwzat7zdze3ukcgd5m.ipfs.w3s.link/giphy-downsized%202.GIF'
+const LOSE_GIF_URL = 'https://bafybeighyzexsg3vjxli5o6yfxfxuwrwsjoljnruvwhpqklqdyddpsxxry.ipfs.w3s.link/giphy%202.GIF'
+const DRAW_GIF_URL = 'https://bafybeigniqc263vmmcwmy2l4hitkklyarbu2e6s3q46izzalxswe5wbyaa.ipfs.w3s.link/giphy.GIF'
 
 let db: admin.firestore.Firestore | null = null;
 let initializationError: Error | null = null;
@@ -69,9 +75,24 @@ const getDb = () => {
 
 export const app = new Frog<{ Variables: NeynarVariables }>({
   basePath: '/api',
-  imageOptions: { width: 1080, height: 1080 },
+  imageOptions: {
+    width: 1080,
+    height: 1080,
+    fonts: [
+      {
+        name: 'Silkscreen',
+        source: 'google',
+        weight: 400,
+      },
+      {
+        name: 'Silkscreen',
+        source: 'google',
+        weight: 700,
+      },
+    ],
+  },
   imageAspectRatio: '1:1',
-  title: 'Tic-Tac-Toe Game',
+  title: 'Tic-Tac-Maxi Game',
   hub: {
     apiUrl: "https://hubs.airstack.xyz",
     fetchOptions: {
@@ -94,7 +115,197 @@ type GameState = {
   board: (string | null)[];
   currentPlayer: 'O' | 'X';
   isGameOver: boolean;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
+
+function calculatePODScore(wins: number, ties: number, losses: number, totalGames: number, tokenBalance: number): number {
+  // Base score calculation
+  const baseScore = (wins * 2) + ties + (losses * 0.5);
+  
+  // Games bonus: +10 points for every 25 games played
+  const gamesBonus = Math.floor(totalGames / 25) * 10;
+  
+  // Token bonus: +25 points PER /thepod fan token owned
+  const tokenBonus = tokenBalance * 25;
+  
+  // Calculate total score
+  const totalScore = baseScore + gamesBonus + tokenBonus;
+  
+  // Round to one decimal place
+  return Math.round(totalScore * 10) / 10;
+}
+
+
+interface TokenHolding {
+  balance: string;
+  buyVolume: string;
+  sellVolume: string;
+  subjectToken: {
+    name: string;
+    symbol: string;
+    currentPriceInMoxie: string;
+  };
+}
+
+async function getFarcasterAddressesFromFID(fid: string): Promise<string[]> {
+  const graphQLClient = new GraphQLClient(AIRSTACK_API_URL, {
+    headers: {
+      'Authorization': AIRSTACK_API_KEY,
+    },
+  });
+
+  const query = gql`
+    query MyQuery($identity: Identity!) {
+      Socials(
+        input: {
+          filter: { dappName: { _eq: farcaster }, identity: { _eq: $identity } }
+          blockchain: ethereum
+        }
+      ) {
+        Social {
+          userAddress
+          userAssociatedAddresses
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    identity: `fc_fid:${fid}`
+  };
+
+  try {
+    const data = await graphQLClient.request<any>(query, variables);
+    console.log('Airstack API response:', JSON.stringify(data, null, 2));
+
+    if (!data.Socials || !data.Socials.Social || data.Socials.Social.length === 0) {
+      throw new Error(`No Farcaster profile found for FID: ${fid}`);
+    }
+
+    const social = data.Socials.Social[0];
+    const addresses = [social.userAddress, ...(social.userAssociatedAddresses || [])];
+    return [...new Set(addresses)]; // Remove duplicates
+  } catch (error) {
+    console.error('Error fetching Farcaster addresses from Airstack:', error);
+    throw error;
+  }
+}
+
+async function getVestingContractAddress(beneficiaryAddresses: string[]): Promise<string | null> {
+  const graphQLClient = new GraphQLClient(MOXIE_VESTING_API_URL);
+
+  const query = gql`
+    query MyQuery($beneficiaries: [Bytes!]) {
+      tokenLockWallets(where: {beneficiary_in: $beneficiaries}) {
+        address: id
+        beneficiary
+      }
+    }
+  `;
+
+  const variables = {
+    beneficiaries: beneficiaryAddresses.map(address => address.toLowerCase())
+  };
+
+  try {
+    const data = await graphQLClient.request<any>(query, variables);
+    console.log('Vesting contract data:', JSON.stringify(data, null, 2));
+
+    if (data.tokenLockWallets && data.tokenLockWallets.length > 0) {
+      return data.tokenLockWallets[0].address;
+    } else {
+      console.log(`No vesting contract found for addresses: ${beneficiaryAddresses.join(', ')}`);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching vesting contract address:', error);
+    return null;
+  }
+}
+
+// Add delay between API calls
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Use it in getOwnedFanTokens
+async function getOwnedFanTokens(addresses: string[]): Promise<TokenHolding[] | null> {
+  const graphQLClient = new GraphQLClient(MOXIE_API_URL)
+  const query = gql`
+    query MyQuery($userAddresses: [ID!]) {
+      users(where: { id_in: $userAddresses }) {
+        portfolio {
+          balance
+          buyVolume
+          sellVolume
+          subjectToken {
+            name
+            symbol
+            currentPriceInMoxie
+          }
+        }
+      }
+    }
+  `
+
+  try {
+    const data = await graphQLClient.request<any>(query, {
+      userAddresses: addresses.map(address => address.toLowerCase())
+    });
+    
+    console.log('Moxie API Response:', JSON.stringify(data, null, 2));
+    
+    return data.users?.[0]?.portfolio || null;
+  } catch (error) {
+    console.error('Error fetching fan tokens:', error);
+    return null;
+  }
+}
+
+async function checkFanTokenOwnership(fid: string): Promise<{ ownsToken: boolean; balance: number }> {
+  try {
+    const addresses = await getFarcasterAddressesFromFID(fid);
+    console.log('Found addresses:', addresses);
+
+    if (!addresses || addresses.length === 0) {
+      return { ownsToken: false, balance: 0 };
+    }
+
+    // Get vesting contract address if it exists
+    const vestingAddress = await getVestingContractAddress(addresses);
+    if (vestingAddress) {
+      addresses.push(vestingAddress);
+    }
+
+    const fanTokenData = await getOwnedFanTokens(addresses);
+    console.log('Fan token data:', fanTokenData);
+
+    if (!fanTokenData) {
+      return { ownsToken: false, balance: 0 };
+    }
+
+    // Fix: Correctly find the thepod token
+    const thepodToken = fanTokenData.find((token: TokenHolding) => 
+      token.subjectToken.symbol.toLowerCase() === "cid:thepod"
+    );
+
+    console.log('Found thepod token:', thepodToken);
+
+    if (thepodToken && parseFloat(thepodToken.balance) > 0) {
+      const balance = parseFloat(thepodToken.balance) / 1e18; // Convert from wei
+      console.log('Calculated balance:', balance);
+      return { ownsToken: true, balance };
+    }
+
+    return { ownsToken: false, balance: 0 };
+  } catch (error) {
+    console.error('Error checking fan token ownership:', error);
+    return { ownsToken: false, balance: 0 };
+  }
+}
+
+
+
 
 async function getTotalGamesPlayed(fid: string): Promise<number> {
   console.log(`Attempting to get total games played for FID: ${fid}`);
@@ -181,7 +392,14 @@ async function getUserProfilePicture(fid: string): Promise<string | null> {
     console.log('Profile image API response:', JSON.stringify(data));
 
     if (data?.data?.Socials?.Social?.[0]?.profileImage) {
-      return data.data.Socials.Social[0].profileImage;
+      let profileImage = data.data.Socials.Social[0].profileImage;
+      // Extract the original Imgur URL
+      const imgurMatch = profileImage.match(/https:\/\/i\.imgur\.com\/[^.]+\.[a-zA-Z]+/);
+      if (imgurMatch) {
+        profileImage = imgurMatch[0];
+      }
+      console.log('Extracted profile image URL:', profileImage);
+      return profileImage;
     } else {
       console.log('No profile image found or unexpected API response structure');
       return null;
@@ -192,6 +410,7 @@ async function getUserProfilePicture(fid: string): Promise<string | null> {
   }
 }
 
+// Update the updateUserTie function to include difficulty
 async function updateUserTie(fid: string) {
   console.log(`Attempting to update tie for FID: ${fid}`);
   try {
@@ -215,46 +434,80 @@ async function updateUserTieAsync(fid: string) {
   }
 }
 
-async function getUserRecord(fid: string): Promise<{ wins: number; losses: number; ties: number }> {
-  console.log(`Attempting to get user record for FID: ${fid}`);
+// Update the user record type
+type UserRecord = {
+  wins: number;
+  losses: number;
+  ties: number;
+  easyWins: number;
+  mediumWins: number;
+  hardWins: number;
+}
+
+// Update the getUserRecord function
+async function getUserRecord(fid: string): Promise<UserRecord> {
+  console.log(`Getting user record for FID: ${fid}`);
   try {
     const database = getDb();
     const userDoc = await database.collection('users').doc(fid).get();
     if (!userDoc.exists) {
-      console.log(`No record found for FID: ${fid}. Returning default record.`);
-      return { wins: 0, losses: 0, ties: 0 };
+      return {
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        easyWins: 0,
+        mediumWins: 0,
+        hardWins: 0
+      };
     }
     const userData = userDoc.data();
-    console.log(`User data for FID ${fid}:`, userData);
-    return { 
-      wins: userData?.wins || 0, 
+    return {
+      wins: userData?.wins || 0,
       losses: userData?.losses || 0,
-      ties: userData?.ties || 0
+      ties: userData?.ties || 0,
+      easyWins: userData?.easyWins || 0,
+      mediumWins: userData?.mediumWins || 0,
+      hardWins: userData?.hardWins || 0
     };
   } catch (error) {
     console.error(`Error getting user record for FID ${fid}:`, error);
-    // Return default record in case of error
-    return { wins: 0, losses: 0, ties: 0 };
+    return {
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      easyWins: 0,
+      mediumWins: 0,
+      hardWins: 0
+    };
   }
 }
 
-async function updateUserRecord(fid: string, isWin: boolean) {
-  console.log(`Attempting to update user record for FID: ${fid}, isWin: ${isWin}`);
+// Update the updateUserRecord function
+async function updateUserRecord(fid: string, isWin: boolean, difficulty: 'easy' | 'medium' | 'hard') {
+  console.log(`Updating user record for FID ${fid}, isWin: ${isWin}, difficulty: ${difficulty}`);
   try {
     const database = getDb();
     const userRef = database.collection('users').doc(fid);
-    await userRef.set({
+    const update: any = {
       [isWin ? 'wins' : 'losses']: admin.firestore.FieldValue.increment(1)
-    }, { merge: true });
+    };
+    
+    // Add difficulty-specific win counter
+    if (isWin) {
+      update[`${difficulty}Wins`] = admin.firestore.FieldValue.increment(1);
+    }
+    
+    await userRef.set(update, { merge: true });
     console.log(`User record updated successfully for FID: ${fid}`);
   } catch (error) {
     console.error(`Error updating user record for FID ${fid}:`, error);
   }
 }
 
-async function updateUserRecordAsync(fid: string, isWin: boolean) {
+// Update the updateUserRecordAsync function to include difficulty
+async function updateUserRecordAsync(fid: string, isWin: boolean, difficulty: 'easy' | 'medium' | 'hard') {
   try {
-    await updateUserRecord(fid, isWin);
+    await updateUserRecord(fid, isWin, difficulty);
     console.log(`User record updated asynchronously for FID: ${fid}`);
   } catch (error) {
     console.error(`Error updating user record asynchronously for FID ${fid}:`, error);
@@ -269,68 +522,71 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-function getBestMove(board: (string | null)[], player: string): number {
-  const opponent = player === 'X' ? 'O' : 'X'
+// Add this function before the app.frame('/game', ...) definition
 
-  if (Math.random() < 0.2) {
-    const availableMoves = board.reduce((acc, cell, index) => {
-      if (cell === null) acc.push(index)
-      return acc
-    }, [] as number[])
-    return availableMoves[Math.floor(Math.random() * availableMoves.length)]
-  }
-
-  if (board.filter(cell => cell !== null).length === 1) {
-    const availableMoves = board.reduce((acc, cell, index) => {
-      if (cell === null) acc.push(index)
-      return acc
-    }, [] as number[])
-    return availableMoves[Math.floor(Math.random() * availableMoves.length)]
-  }
-
-  for (let i = 0; i < 9; i++) {
-    if (board[i] === null) {
-      board[i] = player
-      if (checkWin(board)) {
-        board[i] = null
-        return i
-      }
-      board[i] = null
-    }
-  }
-
-  for (let i = 0; i < 9; i++) {
-    if (board[i] === null) {
-      board[i] = opponent
-      if (checkWin(board)) {
-        board[i] = null
-        return i
-      }
-      board[i] = null
-    }
-  }
-
-  if (board[4] === null && Math.random() < 0.7) return 4
-
-  const availableMoves = board.reduce((acc, cell, index) => {
-    if (cell === null) acc.push(index)
-    return acc
-  }, [] as number[])
-  return availableMoves[Math.floor(Math.random() * availableMoves.length)]
-}
-
-function checkWin(board: (string | null)[]) {
+function checkWin(board: (string | null)[]): boolean {
   const winPatterns = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
     [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
     [0, 4, 8], [2, 4, 6] // Diagonals
-  ]
+  ];
 
   return winPatterns.some(pattern =>
     board[pattern[0]] &&
     board[pattern[0]] === board[pattern[1]] &&
     board[pattern[0]] === board[pattern[2]]
-  )
+  );
+}
+
+// Update the getBestMove function to use checkWin
+function getBestMove(board: (string | null)[], player: string): number {
+  const opponent = player === 'X' ? 'O' : 'X';
+
+  if (Math.random() < 0.2) {
+    const availableMoves = board.reduce((acc, cell, index) => {
+      if (cell === null) acc.push(index);
+      return acc;
+    }, [] as number[]);
+    return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+  }
+
+  if (board.filter(cell => cell !== null).length === 1) {
+    const availableMoves = board.reduce((acc, cell, index) => {
+      if (cell === null) acc.push(index);
+      return acc;
+    }, [] as number[]);
+    return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+  }
+
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) {
+      board[i] = player;
+      if (checkWin(board)) {
+        board[i] = null;
+        return i;
+      }
+      board[i] = null;
+    }
+  }
+
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) {
+      board[i] = opponent;
+      if (checkWin(board)) {
+        board[i] = null;
+        return i;
+      }
+      board[i] = null;
+    }
+  }
+
+  if (board[4] === null && Math.random() < 0.7) return 4;
+
+  const availableMoves = board.reduce((acc, cell, index) => {
+    if (cell === null) acc.push(index);
+    return acc;
+  }, [] as number[]);
+  return availableMoves[Math.floor(Math.random() * availableMoves.length)];
 }
 
 function encodeState(state: GameState): string {
@@ -338,7 +594,12 @@ function encodeState(state: GameState): string {
 }
 
 function decodeState(encodedState: string): GameState {
-  return JSON.parse(Buffer.from(encodedState, 'base64').toString());
+  const decoded = JSON.parse(Buffer.from(encodedState, 'base64').toString());
+  // Ensure difficulty exists in decoded state
+  return {
+    ...decoded,
+    difficulty: decoded.difficulty || 'medium' // Default to medium if not specified
+  };
 }
 
 function renderBoard(board: (string | null)[]) {
@@ -373,6 +634,34 @@ function renderBoard(board: (string | null)[]) {
   )
 }
 
+// Add this function before the game route
+function getCPUMove(board: (string | null)[], difficulty: 'easy' | 'medium' | 'hard'): number {
+  // Easy mode: Mostly random moves with occasional blocking
+  if (difficulty === 'easy') {
+    if (Math.random() < 0.5) {
+      const availableMoves = board.reduce((acc, cell, index) => {
+        if (cell === null) acc.push(index);
+        return acc;
+      }, [] as number[]);
+      return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+    }
+  }
+
+  // Medium mode: Mix of random and strategic moves
+  if (difficulty === 'medium') {
+    if (Math.random() < 0.3) {
+      const availableMoves = board.reduce((acc, cell, index) => {
+        if (cell === null) acc.push(index);
+        return acc;
+      }, [] as number[]);
+      return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+    }
+  }
+
+  // Hard mode (or fallback for medium): Use getBestMove
+  return getBestMove(board, 'X');
+}
+
 // Routes will be defined here...
 
 // Initial route
@@ -386,7 +675,7 @@ app.frame('/', () => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Tic-Tac-Toe Game</title>
+      <title>Tic-Tac-Maxi Game</title>
       <meta property="fc:frame" content="vNext">
       <meta property="fc:frame:image" content="${gifUrl}">
       <meta property="fc:frame:image:aspect_ratio" content="1:1">
@@ -394,8 +683,9 @@ app.frame('/', () => {
       <meta property="fc:frame:button:1:action" content="post">
       <meta property="fc:frame:post_url" content="${baseUrl}/api/howtoplay">
       
+      
       <!-- Added Open Graph tags -->
-      <meta property="og:title" content="Tic-Tac-Toe">
+      <meta property="og:title" content="Tic-Tac-Maxi">
       <meta property="og:description" content="Start New Game or Share!">
       <meta property="og:image" content="${gifUrl}">
       <meta property="og:url" content="${baseUrl}/api">
@@ -411,10 +701,8 @@ app.frame('/', () => {
   })
 })
 
-// How to Play route
 app.frame('/howtoplay', () => {
   const imageUrl = 'https://bafybeifzk7uojcicnh6yhnqvoldkpzuf32sullm34ela266xthbidca6ny.ipfs.w3s.link/HowToPlay%20(1).png'
-  const baseUrl = 'https://podplay.vercel.app' // Update this to your actual domain
 
   const html = `
     <!DOCTYPE html>
@@ -422,13 +710,13 @@ app.frame('/howtoplay', () => {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>How to Play Tic-Tac-Toe</title>
+      <title>How to Play Tic-Tac-Maxi</title>
       <meta property="fc:frame" content="vNext">
       <meta property="fc:frame:image" content="${imageUrl}">
       <meta property="fc:frame:image:aspect_ratio" content="1:1">
-      <meta property="fc:frame:button:1" content="Start Game">
+      <meta property="fc:frame:button:1" content="Choose Difficulty">
       <meta property="fc:frame:button:1:action" content="post">
-      <meta property="fc:frame:post_url" content="${baseUrl}/api/game">
+      <meta property="fc:frame:post_url" content="https://podplay.vercel.app/api/difficulty">
     </head>
     <body>
     </body>
@@ -439,6 +727,50 @@ app.frame('/howtoplay', () => {
     headers: { 'Content-Type': 'text/html' },
   })
 })
+
+// How to Play route
+app.frame('/difficulty', (c) => {
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column' as const,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundImage: 'url(https://bafybeic3qu53tn46qmtgvterldnbbavt2h5y2x7unpyyc7txh2kcx6f6jm.ipfs.w3s.link/Frame%2039%20(3).png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        color: 'white',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        <h1 style={{ fontSize: '52px', marginBottom: '20px' }}>Select Difficulty</h1>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column' as const,
+          gap: '20px',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          padding: '40px',
+          borderRadius: '10px',
+          width: '80%',
+          alignItems: 'center',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '44px', textAlign: 'center' }}>Choose your difficulty:</p>
+          <p style={{ fontSize: '36px', marginBottom: '10px', textAlign: 'center' }}>🟢 Easy: For casual fun</p>
+          <p style={{ fontSize: '36px', marginBottom: '10px', textAlign: 'center' }}>🟡 Medium: For a challenge</p>
+          <p style={{ fontSize: '36px', marginBottom: '10px', textAlign: 'center' }}>🔴 Hard: For experts</p>
+        </div>
+      </div>
+    ),
+    intents: [
+      <Button action="/game" value="start:easy">Easy 🟢</Button>,
+      <Button action="/game" value="start:medium">Medium 🟡</Button>,
+      <Button action="/game" value="start:hard">Hard 🔴</Button>
+    ],
+  });
+});
 
 app.frame('/game', async (c) => {
   console.log('Entering /game route');
@@ -456,8 +788,19 @@ app.frame('/game', async (c) => {
     }
   }
 
-  let state: GameState = { board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false };
-  let message = `New game started! Your turn, ${username}`;
+  let state: GameState = {
+    board: Array(9).fill(null), currentPlayer: 'O', isGameOver: false,
+    difficulty: 'easy' // Default difficulty
+  };
+  
+  // Set difficulty based on buttonValue if starting a new game
+  if (status === 'response' && buttonValue && buttonValue.startsWith('start:')) {
+    const [, difficulty] = buttonValue.split(':');
+    state.difficulty = difficulty as 'easy' | 'medium' | 'hard';
+  }
+  
+  let message = `New game started on ${state.difficulty}! Your turn, ${username}`;
+  let gameResult: 'win' | 'lose' | 'draw' | null = null;
 
   if (status === 'response' && buttonValue && buttonValue.startsWith('move:')) {
     console.log('Processing move');
@@ -472,30 +815,34 @@ app.frame('/game', async (c) => {
         message = `${username} moved at ${COORDINATES[move]}.`;
         
         if (checkWin(state.board)) {
+          gameResult = 'win';
           message = `${username} wins! Game over.`;
           state.isGameOver = true;
           if (fid) {
-            updateUserRecordAsync(fid.toString(), true);
+            updateUserRecordAsync(fid.toString(), true, state.difficulty);
           }
         } else if (state.board.every((cell) => cell !== null)) {
-          message = "Game over! It's a Tie.";
+          gameResult = 'draw';
+          message = `It's a draw! Game over.`;
           state.isGameOver = true;
           if (fid) {
             updateUserTieAsync(fid.toString());
           }
         } else {
-          const computerMove = getBestMove(state.board, 'X');
+          const computerMove = getCPUMove(state.board, state.difficulty);
           state.board[computerMove] = 'X';
           message += ` Computer moved at ${COORDINATES[computerMove]}.`;
           
           if (checkWin(state.board)) {
-            message += ` Computer wins! Game over.`;
+            gameResult = 'lose';
+            message = `Computer wins! Game over.`;
             state.isGameOver = true;
             if (fid) {
-              updateUserRecordAsync(fid.toString(), false);
+              updateUserRecordAsync(fid.toString(), false, state.difficulty);
             }
           } else if (state.board.every((cell) => cell !== null)) {
-            message += " It's a draw. Game over.";
+            gameResult = 'draw';
+            message += ` It's a draw. Game over.`;
             state.isGameOver = true;
             if (fid) {
               updateUserTieAsync(fid.toString());
@@ -517,6 +864,7 @@ app.frame('/game', async (c) => {
 
   console.log('Final game state:', state);
   console.log('Message:', message);
+  console.log('Game result:', gameResult);
 
   const encodedState = encodeState(state);
   const availableMoves = state.board.reduce((acc, cell, index) => {
@@ -528,8 +876,20 @@ app.frame('/game', async (c) => {
 
   const intents = state.isGameOver
     ? [
-        <Button value="newgame">New Game</Button>,
-        <Button action="/share">Share Game</Button>
+        <Button action="/difficulty">Play Again</Button>,
+        <Button action="/share">Your Stats</Button>,
+        <Button action="https://moxie-frames.airstack.xyz/stim?t=cid_thepod">/thepod FT</Button>,
+        <Button.Link href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`I just played Tic-Tac-Maxi by POD Play presented by @moxie.eth! ${
+          gameResult === 'win' 
+            ? 'I won! 😁' 
+            : gameResult === 'lose'
+            ? 'I lost 😔'
+            : gameResult === 'draw'
+            ? "It's a draw!"
+            : ''
+        } Frame by @goldie & @themrsazon`)}&embeds[]=${encodeURIComponent(`https://podplay.vercel.app/api/shared-game?state=${encodedState}&result=${gameResult}`)}`}>
+          Share Results
+        </Button.Link>
       ]
     : shuffledMoves.map((index) => 
         <Button value={`move:${encodedState}:${index}`}>
@@ -546,12 +906,12 @@ app.frame('/game', async (c) => {
         justifyContent: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeiddxtdntzltw5xzc2zvqtotweyrgbeq7t5zvdduhi6nnb7viesov4.ipfs.w3s.link/Frame%2025%20(5).png)',
+        backgroundImage: 'url(https://bafybeidmy2f6x42tjkgtrsptnntcjulfehlvt3ddjoyjbieaz7sywohpxy.ipfs.w3s.link/Frame%2039%20(1).png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
         fontSize: '36px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: '"Silkscreen", sans-serif',
       }}>
         {renderBoard(state.board)}
         <div style={{ 
@@ -561,7 +921,9 @@ app.frame('/game', async (c) => {
           backgroundColor: 'rgba(255, 255, 255, 0.7)', 
           padding: '20px', 
           borderRadius: '10px', 
-          color: 'black' 
+          color: 'black',
+          fontFamily: '"Silkscreen", sans-serif',
+          fontWeight: 700,
         }}>
           {message}
         </div>
@@ -571,44 +933,104 @@ app.frame('/game', async (c) => {
   });
 });
 
+// Update the /next routes
+app.frame('/next', (c) => {
+  const result = c.req.query('result');
+  console.log('Received result:', result);
+  console.log('Full query string:', c.req.url.search);
+
+  let gifUrl;
+
+  switch (result) {
+    case 'win':
+      gifUrl = WIN_GIF_URL;
+      console.log('Selected win GIF');
+      break;
+    case 'lose':
+      gifUrl = LOSE_GIF_URL;
+      console.log('Selected lose GIF');
+      break;
+    case 'draw':
+      gifUrl = DRAW_GIF_URL;
+      console.log('Selected draw GIF');
+      break;
+    default:
+      gifUrl = WIN_GIF_URL;
+      console.log('Default to draw GIF. Unexpected result:', result);
+  }
+
+  console.log('Final GIF URL:', gifUrl);
+
+  const baseUrl = 'https://podplay.vercel.app';
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Game Result: ${result}</title>
+      <meta property="fc:frame" content="vNext">
+      <meta property="fc:frame:image" content="${gifUrl}">
+      <meta property="fc:frame:image:aspect_ratio" content="1:1">
+      <meta property="fc:frame:button:1" content="New Game">
+      <meta property="fc:frame:button:2" content="Your Stats">
+      <meta property="fc:frame:button:1:action" content="post">
+      <meta property="fc:frame:button:2:action" content="post">
+      <meta property="fc:frame:post_url" content="${baseUrl}/api/next">
+      <meta property="fc:frame:button:1:target" content="${baseUrl}/api/game">
+      <meta property="fc:frame:button:2:target" content="${baseUrl}/api/share">
+    </head>
+    <body>
+      <h1>Game Result: ${result}</h1>
+    </body>
+    </html>
+  `;
+
+  console.log('Generated HTML:', html);
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html' },
+  });
+});
+
 
 app.frame('/share', async (c) => {
   console.log('Entering /share route');
   const { frameData } = c;
   const fid = frameData?.fid;
-  const shareText = 'Welcome to POD Play presented by /thepod 🕹️. Think you can win a game of Tic-Tac-Toe? Frame by @goldie & @themrsazon';
-  const baseUrl = 'https://podplay.vercel.app'; // Update this to your actual domain
-  const originalFramesLink = `${baseUrl}/api`;
-  
-  // Construct the Farcaster share URL with both text and the embedded link
-  const farcasterShareURL = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(originalFramesLink)}`;
+  const result = c.req.query('result');
+  const state = c.req.query('state');
 
   let profileImage: string | null = null;
-  let userRecord = { wins: 0, losses: 0 };
+  let userRecord = { wins: 0, losses: 0, ties: 0 };
   let totalGamesPlayed = 0;
+  let podScore = 0;
+  let ownsThepodToken = false;
+  let thepodTokenBalance = 0;
+  let username = 'Player';
 
   if (fid) {
     try {
-      const [profileImageResult, userRecordResult, totalGamesResult] = await Promise.all([
+      const [profileImageResult, userRecordResult, totalGamesResult, fanTokenResult, usernameResult] = await Promise.all([
         getUserProfilePicture(fid.toString()),
         getUserRecord(fid.toString()),
-        getTotalGamesPlayed(fid.toString())
+        getTotalGamesPlayed(fid.toString()),
+        checkFanTokenOwnership(fid.toString()),
+        getUsername(fid.toString())
       ]);
 
       profileImage = profileImageResult;
       userRecord = userRecordResult;
       totalGamesPlayed = totalGamesResult;
+      ownsThepodToken = fanTokenResult.ownsToken;
+      thepodTokenBalance = fanTokenResult.balance;
+      username = usernameResult;
+      podScore = calculatePODScore(userRecord.wins, userRecord.ties, userRecord.losses, totalGamesPlayed, thepodTokenBalance);
 
       console.log(`Profile image URL for FID ${fid}:`, profileImage);
-      console.log(`User record for FID ${fid}:`, userRecord);
-      console.log(`Total games played for FID ${fid}:`, totalGamesPlayed);
     } catch (error) {
       console.error(`Error fetching data for FID ${fid}:`, error);
-      if (error instanceof Error) {
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
-      }
     }
   }
 
@@ -621,37 +1043,208 @@ app.frame('/share', async (c) => {
         alignItems: 'center',
         width: '1080px',
         height: '1080px',
-        backgroundImage: 'url(https://bafybeigp3dkqr7wqgvp7wmycpg6axhgmc42pljkzmhdbnrsnxehoieqeri.ipfs.w3s.link/Frame%209.png)',
+        backgroundImage: 'url(https://bafybeiax2usqi6g7cglrvxa5n3vw7vimqruklebxnmmpm5bo7ah4yldhwi.ipfs.w3s.link/Frame%2039%20(2).png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        color: 'white',
+        fontFamily: 'Arial, sans-serif',
+      }}>
+        {profileImage ? (
+          <img 
+            src={profileImage} 
+            alt="User profile"
+            width={200}
+            height={200}
+            style={{
+              borderRadius: '50%',
+              border: '3px solid white',
+              marginBottom: '20px',
+              objectFit: 'cover',
+            }}
+          />
+        ) : (
+          <div style={{
+            width: '200px',
+            height: '200px',
+            borderRadius: '50%',
+            border: '3px solid white',
+            marginBottom: '20px',
+            backgroundColor: '#303095',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '72px',
+            color: 'white',
+          }}>
+            {fid ? fid.toString().slice(0, 2) : 'P'}
+          </div>
+        )}
+        <h1 style={{ fontSize: '52px', marginBottom: '20px' }}>{username}'s Stats</h1>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column' as const,
+          alignItems: 'flex-start',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          padding: '20px',
+          borderRadius: '10px',
+          width: '80%',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>POD Score:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{podScore}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>Record:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{userRecord.wins}W - {userRecord.losses}L - {userRecord.ties}T</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>Total Games Played:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{totalGamesPlayed}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>/thepod Fan Tokens owned:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{thepodTokenBalance.toFixed(2)}</span>
+          </div>
+        </div>
+        <p style={{ fontSize: '28px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
+      </div>
+    ),
+    intents: [
+      <Button action="/difficulty">Play Again</Button>,
+      <Button action="https://moxie-frames.airstack.xyz/stim?t=cid_thepod">/thepod FT</Button>,
+      <Button.Link href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`I just played Tic-Tac-Maxi and my POD Score is ${podScore.toFixed(1)} 🕹️. Keep playing to increase your POD Score! Frame by @goldie & @themrsazon. Powered by @moxie.eth`)}&embeds[]=${encodeURIComponent(`https://podplay.vercel.app/api/shared-stats?wins=${userRecord.wins}&losses=${userRecord.losses}&ties=${userRecord.ties}&games=${totalGamesPlayed}&tokens=${thepodTokenBalance}&score=${podScore}&username=${encodeURIComponent(username)}`)}`}>
+        Share Stats
+      </Button.Link>,
+      <Button.Link href={`https://warpcast.com/~/compose?text=${encodeURIComponent('Play Tic-Tac-Maxi by POD Play presented by @moxie.eth! Frame by @goldie & @themrsazon')}&embeds[]=${encodeURIComponent('https://podplay.vercel.app/api')}`}>
+        Share Game
+      </Button.Link>
+    ],
+  });
+});
+
+
+app.frame('/shared-stats', async (c) => {
+  const { wins, losses, ties, games, tokens, score, username } = c.req.query();
+  
+  // Fetch the profile image
+  let profileImage: string | null = null;
+  try {
+    profileImage = await getUserProfilePicture(username as string);
+  } catch (error) {
+    console.error('Error fetching profile image:', error);
+  }
+
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column' as const,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundImage: 'url(https://bafybeiax2usqi6g7cglrvxa5n3vw7vimqruklebxnmmpm5bo7ah4yldhwi.ipfs.w3s.link/Frame%2039%20(2).png)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         color: 'white',
         fontFamily: 'Arial, sans-serif',
       }}>
         {profileImage && (
-          <img 
-            src={profileImage} 
-            alt="User profile"
-            style={{
-              width: '250px',
-              height: '250px',
-              borderRadius: '50%',
-              border: '3px solid white',
-              marginBottom: '20px',
-            }}
-          />
+          <img src={profileImage} alt="Profile" style={{ borderRadius: '50%', width: '150px', height: '150px', marginBottom: '20px' }} />
         )}
-        <h1 style={{ fontSize: '60px', marginBottom: '20px' }}>Thanks for Playing!</h1>
-        <p style={{ fontSize: '44px', marginBottom: '20px' }}>Your Record: {userRecord.wins}W - {userRecord.losses}L</p>
-        <p style={{ fontSize: '36px', marginBottom: '20px' }}>Total Games Played Including Ties: {totalGamesPlayed}</p>
-        <p style={{ fontSize: '32px', marginBottom: '20px' }}>Frame by @goldie & @themrsazon</p>
+        <h1 style={{ fontSize: '52px', marginBottom: '20px' }}>{decodeURIComponent(username as string)}'s Stats</h1>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column' as const,
+          alignItems: 'flex-start',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          padding: '20px',
+          borderRadius: '10px',
+          width: '80%',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>POD Score:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{score}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>Record:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{wins}W - {losses}L - {ties}T</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>Total Games Played:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{games}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '10px' }}>
+            <span style={{ fontSize: '36px' }}>/thepod Fan Tokens owned:</span>
+            <span style={{ fontSize: '36px', fontWeight: 'bold' }}>{Number(tokens).toFixed(2)}</span>
+          </div>
+        </div>
+        <p style={{ fontSize: '28px', marginTop: '20px' }}>Frame by @goldie & @themrsazon</p>
       </div>
     ),
     intents: [
-      <Button action="/">Play Again</Button>,
-      <Button.Link href={farcasterShareURL}>Share</Button.Link>
-    ],
+      <Button action="/howtoplay">Play</Button>
+    ]
   });
 });
+
+app.frame('/shared-game', (c) => {
+  const { state } = c.req.query();
+  
+  let decodedState;
+  try {
+    decodedState = state ? decodeState(state as string) : {
+      board: Array(9).fill(null),
+      currentPlayer: 'O',
+      isGameOver: false
+    };
+    console.log('Decoded state:', decodedState);
+  } catch (error) {
+    console.error('Error decoding state:', error);
+    decodedState = {
+      board: Array(9).fill(null),
+      currentPlayer: 'O',
+      isGameOver: false
+    };
+  }
+
+  // Just return the final game state image
+  return c.res({
+    image: (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '1080px',
+        height: '1080px',
+        backgroundImage: 'url(https://bafybeidmy2f6x42tjkgtrsptnntcjulfehlvt3ddjoyjbieaz7sywohpxy.ipfs.w3s.link/Frame%2039%20(1).png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        color: 'white',
+        fontFamily: '"Silkscreen", sans-serif',
+      }}>
+        {renderBoard(decodedState.board)}
+        <div style={{
+          marginTop: '40px',
+          padding: '20px',
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          borderRadius: '10px',
+          color: 'black',
+          fontSize: '36px',
+          textAlign: 'center',
+          maxWidth: '900px',
+        }}>
+          Can you beat the CPU?
+        </div>
+      </div>
+    ),
+    intents: [
+      <Button action="/howtoplay">Play</Button>
+    ]
+  });
+});
+
 
 
 export const GET = handle(app)
