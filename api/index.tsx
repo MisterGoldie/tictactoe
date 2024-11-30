@@ -511,7 +511,6 @@ app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   const baseUrl = 'https://podplay.vercel.app';
 
-  // Get recent players and total count
   const recentPlayers = await getRecentPlayers(8);
   const totalPlayers = await getTotalPlayers();
 
@@ -529,36 +528,33 @@ app.frame('/', async (c) => {
       }}>
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
+          gap: '10px',
           background: 'white',
           padding: '15px 25px',
           borderRadius: '12px',
-          gap: '10px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center'
+          {recentPlayers.map((player, i) => (
+            <img 
+              key={player.fid}
+              src={player.profileImage || ''}
+              alt=""
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '2px solid white',
+                marginLeft: i === 0 ? '0' : '-24px',
+              }}
+            />
+          ))}
+          <span style={{ 
+            fontSize: '24px', 
+            color: '#666',
+            marginLeft: '10px'
           }}>
-            {recentPlayers.map((player, i) => (
-              <img 
-                key={player.fid}
-                src={player.profileImage || ''}
-                alt=""
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  border: '2px solid white',
-                  marginLeft: i === 0 ? '0' : '-8px',
-                  zIndex: recentPlayers.length - i
-                }}
-              />
-            ))}
-          </div>
-          <div style={{ fontSize: '24px', color: '#666' }}>
             +{totalPlayers} players have enjoyed the game
-          </div>
+          </span>
         </div>
       </div>
     ),
