@@ -434,7 +434,7 @@ async function updateUserTieAsync(fid: string) {
   }
 }
 
-// Add timestamp field to UserRecord type
+// Update UserRecord type to include profile image
 type UserRecord = {
   wins: number;
   losses: number;
@@ -442,17 +442,23 @@ type UserRecord = {
   easyWins: number;
   mediumWins: number;
   hardWins: number;
-  timestamp?: admin.firestore.Timestamp;
+  timestamp: admin.firestore.Timestamp;
+  profileImage?: string;  // Added this field
 }
 
-// Update updateUserRecord to include timestamp
+// When updating user record, also store their profile image
 async function updateUserRecord(fid: string, isWin: boolean, difficulty: 'easy' | 'medium' | 'hard') {
   try {
     const database = getDb();
     const userRef = database.collection('users').doc(fid);
+    
+    // Get profile image
+    const profileImage = await getUserProfilePicture(fid);
+    
     const update: any = {
       [isWin ? 'wins' : 'losses']: admin.firestore.FieldValue.increment(1),
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      profileImage: profileImage  // Store profile image URL
     };
     
     if (isWin) {
@@ -465,7 +471,7 @@ async function updateUserRecord(fid: string, isWin: boolean, difficulty: 'easy' 
   }
 }
 
-// Add new functions for recent players and total count
+// Function to get recent players with their profile images
 async function getRecentPlayers(limit: number = 8): Promise<Array<{fid: string, profileImage: string | null}>> {
   try {
     const database = getDb();
@@ -474,13 +480,13 @@ async function getRecentPlayers(limit: number = 8): Promise<Array<{fid: string, 
       .limit(limit)
       .get();
 
-    const playerPromises = usersSnapshot.docs.map(async (doc) => {
-      const fid = doc.id;
-      const profileImage = await getUserProfilePicture(fid);
-      return { fid, profileImage };
+    return usersSnapshot.docs.map(doc => {
+      const userData = doc.data();
+      return {
+        fid: doc.id,
+        profileImage: userData.profileImage || null
+      };
     });
-
-    return Promise.all(playerPromises);
   } catch (error) {
     console.error('Error getting recent players:', error);
     return [];
@@ -1045,12 +1051,12 @@ async function getUserRecord(fid: string): Promise<UserRecord> {
     const database = getDb();
     const userDoc = await database.collection('users').doc(fid).get();
     if (!userDoc.exists) {
-      return { wins: 0, losses: 0, ties: 0, easyWins: 0, mediumWins: 0, hardWins: 0 };
+      return { wins: 0, losses: 0, ties: 0, easyWins: 0, mediumWins: 0, hardWins: 0, timestamp: admin.firestore.Timestamp.fromDate(new Date()) };
     }
     return userDoc.data() as UserRecord;
   } catch (error) {
     console.error(`Error getting user record for FID ${fid}:`, error);
-    return { wins: 0, losses: 0, ties: 0, easyWins: 0, mediumWins: 0, hardWins: 0 };
+    return { wins: 0, losses: 0, ties: 0, easyWins: 0, mediumWins: 0, hardWins: 0, timestamp: admin.firestore.Timestamp.fromDate(new Date()) };
   }
 }
 
