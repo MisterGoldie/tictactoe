@@ -511,11 +511,13 @@ app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   const baseUrl = 'https://podplay.vercel.app';
 
-  // Get just the total player count
   const totalPlayers = await getTotalPlayers();
   
-  // Hardcode the profile image by fetching it once
-  const profileImage = await getUserProfilePicture('7472');
+  // Get both profile images
+  const [profileImage1, profileImage2] = await Promise.all([
+    getUserProfilePicture('7472'),  // your FID
+    getUserProfilePicture('14871')  // Jarrod's FID
+  ]);
 
   return c.res({
     image: (
@@ -538,16 +540,34 @@ app.frame('/', async (c) => {
           padding: '15px 25px',
           borderRadius: '12px',
         }}>
-          <img 
-            src={profileImage || ''}
-            alt=""
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              border: '2px solid white'
-            }}
-          />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+          }}>
+            <img 
+              src={profileImage1 || ''}
+              alt=""
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '2px solid white',
+                zIndex: 2
+              }}
+            />
+            <img 
+              src={profileImage2 || ''}
+              alt=""
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '2px solid white',
+                marginLeft: '-12px',
+                zIndex: 1
+              }}
+            />
+          </div>
           <span style={{ 
             fontSize: '24px', 
             color: '#666'
