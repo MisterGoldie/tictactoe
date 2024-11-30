@@ -511,9 +511,11 @@ app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   const baseUrl = 'https://podplay.vercel.app';
 
-  // Only get the most recent player
-  const recentPlayers = await getRecentPlayers(1);
+  // Get just the total player count
   const totalPlayers = await getTotalPlayers();
+  
+  // Hardcode the profile image by fetching it once
+  const profileImage = await getUserProfilePicture('7472');
 
   return c.res({
     image: (
@@ -536,18 +538,16 @@ app.frame('/', async (c) => {
           padding: '15px 25px',
           borderRadius: '12px',
         }}>
-          {recentPlayers[0]?.profileImage && (
-            <img 
-              src={recentPlayers[0].profileImage}
-              alt=""
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '2px solid white'
-              }}
-            />
-          )}
+          <img 
+            src={profileImage || ''}
+            alt=""
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: '2px solid white'
+            }}
+          />
           <span style={{ 
             fontSize: '24px', 
             color: '#666'
