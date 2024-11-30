@@ -511,7 +511,8 @@ app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   const baseUrl = 'https://podplay.vercel.app';
 
-  const recentPlayers = await getRecentPlayers(8);
+  // Only get the most recent player
+  const recentPlayers = await getRecentPlayers(1);
   const totalPlayers = await getTotalPlayers();
 
   return c.res({
@@ -535,24 +536,21 @@ app.frame('/', async (c) => {
           padding: '15px 25px',
           borderRadius: '12px',
         }}>
-          {recentPlayers.map((player, i) => (
+          {recentPlayers[0]?.profileImage && (
             <img 
-              key={player.fid}
-              src={player.profileImage || ''}
+              src={recentPlayers[0].profileImage}
               alt=""
               style={{
                 width: '32px',
                 height: '32px',
                 borderRadius: '50%',
-                border: '2px solid white',
-                marginLeft: i === 0 ? '0' : '-24px',
+                border: '2px solid white'
               }}
             />
-          ))}
+          )}
           <span style={{ 
             fontSize: '24px', 
-            color: '#666',
-            marginLeft: '10px'
+            color: '#666'
           }}>
             +{totalPlayers} players have enjoyed the game
           </span>
