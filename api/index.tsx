@@ -506,7 +506,7 @@ async function getTotalPlayers(): Promise<number> {
   }
 }
 
-// Update the initial route
+// Update the initial routes
 app.frame('/', async (c) => {
   const gifUrl = 'https://bafybeidnv5uh2ne54dlzyummobyv3bmc7uzuyt5htodvy27toqqhijf4xu.ipfs.w3s.link/PodPlay.gif';
   const baseUrl = 'https://podplay.vercel.app';
