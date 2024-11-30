@@ -509,6 +509,10 @@ app.frame('/', async (c) => {
   return c.res({
     image: (
       <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         width: '1080px',
         height: '1080px',
         position: 'relative',
@@ -517,19 +521,18 @@ app.frame('/', async (c) => {
         backgroundPosition: 'center',
       }}>
         <div style={{
-          position: 'absolute',
-          top: '40%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '10px',
           padding: '20px',
           background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '15px'
+          borderRadius: '15px',
+          gap: '10px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '-10px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center'
+          }}>
             {recentPlayers.map((player, i) => (
               <div key={player.fid} style={{
                 width: '40px',
@@ -539,6 +542,7 @@ app.frame('/', async (c) => {
                 marginLeft: i === 0 ? '0' : '-10px',
                 overflow: 'hidden',
                 backgroundColor: '#303095',
+                zIndex: recentPlayers.length - i
               }}>
                 {player.profileImage && <img src={player.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
               </div>
